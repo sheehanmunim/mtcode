@@ -128,13 +128,18 @@ export function UsagePage() {
   const { merged, environments, selectedEnvironments, isPending, isPartial, refresh } =
     useMemo(() => {
       if (!fixture || !showingLimits) return usage;
-      const all = [...fixture].map(([environmentId, presentation]) => ({
-        environmentId,
-        label: presentation.entry.target.label,
-        isPending: false,
-        error: null,
-        summary: null,
-      }));
+      const all: readonly EnvironmentUsageStatus[] = [...fixture].map(
+        ([environmentId, presentation]) => ({
+          environmentId,
+          label: presentation.entry.target.label,
+          // Synthetic environments are always reachable; the picker reads
+          // `phase` for its connection coverage copy.
+          phase: "connected" as const,
+          isPending: false,
+          error: null,
+          summary: null,
+        }),
+      );
       return {
         ...usage,
         environments: all,
