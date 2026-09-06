@@ -29,6 +29,7 @@ import {
   createAtomCommandScheduler,
   createEnvironmentCommand,
   createEnvironmentRpcCommand,
+  createEnvironmentQueryAtomFamily,
   createEnvironmentRpcQueryAtomFamily,
   createEnvironmentRpcSubscriptionAtomFamily,
   createRuntimeCommand,
@@ -382,6 +383,7 @@ const cachedConfigSnapshotEvent = (config: ServerConfig): ServerConfigStreamEven
 export interface ServerConfigSubscriptionOptions {
   readonly environmentThemes?: boolean;
   readonly usageLimitSources?: boolean;
+  readonly usageLimitsCommand?: boolean;
 }
 
 export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConfigState.make")(
@@ -449,6 +451,7 @@ export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConf
     yield* subscribe(WS_METHODS.subscribeServerConfig, {
       ...(subscription.environmentThemes === true ? { environmentThemes: true } : {}),
       ...(subscription.usageLimitSources === true ? { usageLimitSources: true } : {}),
+      ...(subscription.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
     }).pipe(
       Stream.runForEach((event) =>
         Effect.gen(function* () {
@@ -479,7 +482,7 @@ export const makeEnvironmentServerConfigState = Effect.fn("EnvironmentServerConf
   },
 );
 
-export function serverConfigStateChanges(
+function serverConfigStateChanges(
   environmentId: EnvironmentId,
   subscription: ServerConfigSubscriptionOptions,
 ) {
@@ -604,7 +607,7 @@ export const makeEnvironmentServerWelcomeState = Effect.fn("EnvironmentServerWel
   },
 );
 
-export function serverWelcomeStateChanges(environmentId: EnvironmentId) {
+function serverWelcomeStateChanges(environmentId: EnvironmentId) {
   return followStreamInEnvironment(
     environmentId,
     Stream.unwrap(
@@ -645,6 +648,7 @@ export function createServerEnvironmentAtoms<R, E>(
     readonly environmentThemes?: boolean;
     /** Whether this surface renders quota from configured usage-limit sources. */
     readonly usageLimitSources?: boolean;
+    readonly usageLimitsCommand?: boolean;
   },
 ) {
   const configScheduler = createAtomCommandScheduler();
@@ -660,6 +664,7 @@ export function createServerEnvironmentAtoms<R, E>(
         serverConfigStateChanges(environmentId, {
           ...(options.environmentThemes === true ? { environmentThemes: true } : {}),
           ...(options.usageLimitSources === true ? { usageLimitSources: true } : {}),
+          ...(options.usageLimitsCommand === true ? { usageLimitsCommand: true } : {}),
         }),
       )
       .pipe(
@@ -1046,6 +1051,12 @@ export function createServerEnvironmentAtoms<R, E>(
     processDiagnostics: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:process-diagnostics",
       tag: WS_METHODS.serverGetProcessDiagnostics,
+    }),
+    hostResources: createEnvironmentQueryAtomFamily(runtime, {
+      label: "environment-data:server:host-resources",
+      staleTimeMs: 5_000,
+      execute: (input: EnvironmentRpcInput<typeof WS_METHODS.serverGetHostResources>) =>
+        request(WS_METHODS.serverGetHostResources, input).pipe(Effect.timeout("5 seconds")),
     }),
     processResourceHistory: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:process-resource-history",

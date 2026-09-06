@@ -3,6 +3,14 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./load-balancing": {
+      "types": "./src/load-balancing.ts",
+      "default": "./src/load-balancing.ts"
+    },
+    "./project-favicon-cache": {
+      "types": "./src/projectFaviconCache.ts",
+      "default": "./src/projectFaviconCache.ts"
+    },
     "./connection": {
       "types": "./src/connection/index.ts",
       "default": "./src/connection/index.ts"
@@ -167,6 +175,10 @@
       "types": "./src/state/skillInventoryHttp.ts",
       "default": "./src/state/skillInventoryHttp.ts"
     },
+    "./state/usage": {
+      "types": "./src/state/usage.ts",
+      "default": "./src/state/usage.ts"
+    },
     "./state/server": {
       "types": "./src/state/server.ts",
       "default": "./src/state/server.ts"
@@ -194,10 +206,6 @@
     "./state/threads": {
       "types": "./src/state/threads.ts",
       "default": "./src/state/threads.ts"
-    },
-    "./state/usage": {
-      "types": "./src/state/usage.ts",
-      "default": "./src/state/usage.ts"
     },
     "./state/subagentRuntime": {
       "types": "./src/state/subagentRuntime.ts",

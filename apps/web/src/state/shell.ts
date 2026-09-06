@@ -5,7 +5,6 @@ import {
 } from "@t3tools/client-runtime/connection";
 import {
   createEnvironmentShellAtoms,
-  createEnvironmentShellSummaryAtom,
   createEnvironmentSnapshotAtom,
   createShellEnvironmentAtoms,
   type EnvironmentShellStatus,
@@ -23,10 +22,6 @@ import { isHostedStaticApp } from "../hostedPairing";
 export const shellEnvironment = createShellEnvironmentAtoms(connectionAtomRuntime);
 export const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
 export const environmentSnapshotAtom = createEnvironmentSnapshotAtom(environmentShell.stateAtom);
-export const environmentShellSummaryAtom = createEnvironmentShellSummaryAtom({
-  catalogValueAtom: environmentCatalog.catalogValueAtom,
-  shellStateValueAtom: environmentShell.stateValueAtom,
-});
 
 const EMPTY_SHELL_ENVIRONMENT_IDS: ReadonlySet<EnvironmentId> = new Set();
 

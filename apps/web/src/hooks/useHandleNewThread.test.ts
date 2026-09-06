@@ -49,15 +49,26 @@ const testState = vi.hoisted(() => {
 });
 
 vi.mock("@effect/atom-react", () => ({
-  // One stub stands in for every atom this hook reads: the settings values it
-  // asserts on, plus the empty environment catalog/presentation map that
-  // `useEnvironments` walks.
-  useAtomValue: () => ({
-    defaultThreadEnvMode: "local",
-    newWorktreesStartFromOrigin: false,
-    isReady: false,
-    entries: () => [],
-  }),
+  // The hook reads three kinds of atoms: the primary settings it asserts on,
+  // the per-environment server configs, and the environment catalog /
+  // presentation map that `useEnvironments` walks (stubbed empty).
+  useAtomValue: (atom: unknown) =>
+    atom === "primary-settings"
+      ? { newWorktreesStartFromOrigin: false }
+      : atom === "environment-configs"
+        ? new Map([
+            [
+              "environment-ssh",
+              {
+                settings: {
+                  defaultThreadEnvMode: "local",
+                  newWorktreesStartFromOrigin: false,
+                  defaultModelSelection: null,
+                },
+              },
+            ],
+          ])
+        : { isReady: false, entries: () => [] },
 }));
 vi.mock("@t3tools/client-runtime/environment", () => ({
   scopedProjectKey: () => "remote-project",
@@ -130,7 +141,8 @@ vi.mock("../state/entities", () => ({
   useThread: () => null,
 }));
 vi.mock("../state/server", () => ({
-  primaryServerSettingsAtom: {},
+  environmentServerConfigsAtom: "environment-configs",
+  primaryServerSettingsAtom: "primary-settings",
   // `state/presentation` builds its atoms from this at import time.
   serverEnvironment: { configValueAtom: {} },
 }));

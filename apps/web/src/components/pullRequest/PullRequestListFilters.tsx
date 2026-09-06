@@ -1,3 +1,4 @@
+import { Spinner } from "~/components/ui/spinner";
 import type {
   EnvironmentId,
   ProjectId,
@@ -16,7 +17,6 @@ import {
   GitPullRequestDraftIcon,
   LayersIcon,
   ListFilterIcon,
-  LoaderIcon,
   SearchIcon,
   TagIcon,
   UserRoundIcon,
@@ -119,7 +119,7 @@ export function PullRequestSearchInput({
   return (
     <InputGroup className="min-w-0 flex-1 **:[input]:h-9 sm:**:[input]:h-8">
       <InputGroupAddon>
-        {busy ? <LoaderIcon aria-hidden className="animate-spin" /> : <SearchIcon aria-hidden />}
+        {busy ? <Spinner aria-hidden /> : <SearchIcon aria-hidden />}
       </InputGroupAddon>
       <InputGroupInput
         type="search"

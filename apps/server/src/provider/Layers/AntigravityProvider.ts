@@ -145,7 +145,9 @@ export const makeAntigravityProvider = Effect.fn("makeAntigravityProvider")(func
         installed: false,
         version: null,
         status: "warning",
-        auth: { status: "unknown" },
+        // The configured method rides along so the registry can tell a saved
+        // account for this method from one left by a previous configuration.
+        auth: { status: "unknown", ...(options.auth ? { type: options.auth.type } : {}) },
         message: settings.enabled
           ? "Checking Antigravity availability."
           : providerDisabledMessage("Antigravity"),

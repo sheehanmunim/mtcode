@@ -1,145 +1,184 @@
 import {
   EnvironmentId,
+  UsageDay,
   USAGE_CONTRACT_VERSION,
-  USAGE_MERGE_COMPATIBLE_SINCE,
-  type UsageDay,
   type UsageSummary,
 } from "@t3tools/contracts";
-import * as Cause from "effect/Cause";
-import * as Option from "effect/Option";
-import { AsyncResult } from "effect/unstable/reactivity";
-import { describe, expect, it } from "vite-plus/test";
+import * as Effect from "effect/Effect";
+import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { deriveUsageState, environmentUsageStatus, type EnvironmentUsageStatus } from "./usage.ts";
+import type { EnvironmentPresentation } from "../connection/presentation.ts";
+import { EnvironmentRpcUnavailableError } from "../rpc/client.ts";
+import { refreshUsage } from "./usage.ts";
 
-const ENVIRONMENT_A = EnvironmentId.make("environment-a");
-const ENVIRONMENT_B = EnvironmentId.make("environment-b");
+const input = {
+  sinceDay: UsageDay.make("2026-09-05"),
+  untilDay: UsageDay.make("2026-09-05"),
+  timeZone: "UTC",
+};
+const pricing = { status: "fresh" as const, source: "test", fetchedAt: null, knownModels: 1 };
+const summary: UsageSummary = {
+  ...input,
+  contractVersion: USAGE_CONTRACT_VERSION,
+  readAt: "2026-09-05T12:00:00Z",
+  buckets: [],
+  sources: [],
+  pricing,
+  scanDurationMs: 1,
+};
+const registries: AtomRegistry.AtomRegistry[] = [];
+afterEach(() => {
+  for (const registry of registries.splice(0)) registry.dispose();
+});
 
-function summary(costUsd: number, contractVersion: number = USAGE_CONTRACT_VERSION): UsageSummary {
-  return {
-    contractVersion,
-    readAt: "2026-08-09T00:00:00.000Z",
-    timeZone: "UTC",
-    sinceDay: "2026-08-01" as UsageDay,
-    untilDay: "2026-08-09" as UsageDay,
-    buckets: [
-      {
-        day: "2026-08-09" as UsageDay,
-        provider: "claude",
-        model: "claude-fable-5",
-        totals: {
-          uncachedInputTokens: 100,
-          cachedInputTokens: 0,
-          cacheCreationTokens: 0,
-          outputTokens: 50,
-          reasoningTokens: 0,
-        },
-        costUsd,
-        cacheSavingsUsd: 0,
-        costSource: "modelPriced",
-        records: 1,
-        unpricedRecords: 0,
-        sessions: 1,
-      },
-    ],
-    sources: [
-      {
-        fingerprint: {
-          hostId: `host-${costUsd}`,
-          provider: "claude",
-          resolvedHomePath: `/home/${costUsd}/.claude`,
-          volumeId: `volume-${costUsd}`,
-        },
-        status: "ok",
-        scannedFiles: 1,
-        skippedFiles: 0,
-        malformedRecords: 0,
-        distinctSessions: 1,
-        message: null,
-      },
-    ],
-    pricing: { status: "fresh", source: "litellm", fetchedAt: null, knownModels: 1 },
-    scanDurationMs: 1,
-  };
-}
-
-function status(
-  environmentId: typeof ENVIRONMENT_A,
-  result: AsyncResult.AsyncResult<UsageSummary, string>,
-): EnvironmentUsageStatus {
-  return environmentUsageStatus({ environmentId, label: environmentId, result });
-}
-
-describe("usage state", () => {
-  it("treats a waiting failure as reporting during retry", () => {
-    const failed = AsyncResult.failure<UsageSummary, string>(Cause.fail("offline"));
-    const retrying = status(ENVIRONMENT_B, AsyncResult.waitingFrom(Option.some(failed)));
-
-    expect(retrying).toMatchObject({
-      isPending: true,
-      error: null,
-      summary: null,
-    });
-    expect(deriveUsageState([retrying])).toMatchObject({
-      isPending: true,
-      isPartial: false,
-    });
-
-    const partial = deriveUsageState([
-      status(ENVIRONMENT_A, AsyncResult.success(summary(10))),
-      retrying,
-    ]);
-    expect(partial).toMatchObject({ isPending: false, isPartial: true });
-    expect(partial.merged.costUsd).toBe(10);
-  });
-
-  it("renders partial totals, then excludes a failed environment's previous success", () => {
-    const pendingA = status(ENVIRONMENT_A, AsyncResult.initial(true));
-    const pendingB = status(ENVIRONMENT_B, AsyncResult.initial(true));
-    expect(deriveUsageState([pendingA, pendingB])).toMatchObject({
-      isPending: true,
-      isPartial: false,
-    });
-
-    const loadedA = status(ENVIRONMENT_A, AsyncResult.success(summary(10)));
-    const partial = deriveUsageState([loadedA, pendingB]);
-    expect(partial).toMatchObject({ isPending: false, isPartial: true });
-    expect(partial.merged.costUsd).toBe(10);
-
-    const previousB = AsyncResult.success<UsageSummary, string>(summary(20));
-    const failedB = status(
-      ENVIRONMENT_B,
-      AsyncResult.failure(Cause.fail("offline"), {
-        previousSuccess: Option.some(previousB),
+function harness(ids = ["a"]) {
+  const registry = AtomRegistry.make();
+  registries.push(registry);
+  const environments = ids.map((id) => {
+    const environmentId = EnvironmentId.make(id);
+    const rates = Promise.withResolvers<
+      AsyncResult.Success<typeof pricing> | AsyncResult.Failure<never, unknown>
+    >();
+    const scan = Promise.withResolvers<UsageSummary>();
+    const scanStarted = Promise.withResolvers<void>();
+    const presentation = Atom.make({
+      connection: { phase: "connected" },
+    } as EnvironmentPresentation | null);
+    const query = Atom.make(
+      Effect.promise(() => {
+        scanStarted.resolve();
+        return scan.promise;
       }),
     );
-    const settled = deriveUsageState([loadedA, failedB]);
+    return { environmentId, rates, scan, scanStarted, presentation, query };
+  });
+  function get(environmentId: EnvironmentId) {
+    const environment = environments.find((entry) => entry.environmentId === environmentId);
+    if (!environment) throw new Error(`Unknown environment: ${environmentId}`);
+    return environment;
+  }
+  const options = {
+    registry,
+    environmentIds: environments.map((entry) => entry.environmentId),
+    input,
+    server: {
+      usageSummary: ({ environmentId }: { environmentId: EnvironmentId }) =>
+        get(environmentId).query,
+      refreshUsageRates: {
+        label: "test:rates",
+        run: (
+          _registry: AtomRegistry.AtomRegistry,
+          { environmentId }: { environmentId: EnvironmentId },
+        ) => get(environmentId).rates.promise,
+      },
+    },
+    presentations: {
+      presentationAtom: (environmentId: EnvironmentId) => get(environmentId).presentation,
+    },
+  } satisfies Parameters<typeof refreshUsage>[0];
+  return { registry, environments, refresh: () => refreshUsage(options) };
+}
 
-    expect(failedB).toMatchObject({
-      isPending: false,
-      error: "This environment could not report usage.",
-      summary: null,
+describe("manual usage refresh", () => {
+  it.each(["success", "failure"])("waits for the rescan after a pricing %s", async (result) => {
+    const {
+      environments: [environment],
+      refresh,
+    } = harness();
+    const entry = environment!;
+    let finished = false;
+    const refreshing = refresh().then(() => {
+      finished = true;
     });
-    expect(settled).toMatchObject({ isPending: false, isPartial: false });
-    expect(settled.merged.costUsd).toBe(10);
-    expect(settled.merged.contributingEnvironments).toEqual([ENVIRONMENT_A]);
+    expect(finished).toBe(false);
+    entry.rates.resolve(
+      result === "success"
+        ? AsyncResult.success(pricing)
+        : AsyncResult.fail(new Error("Pricing offline")),
+    );
+    await entry.scanStarted.promise;
+    expect(finished).toBe(false);
+    entry.scan.resolve(summary);
+    await refreshing;
+    expect(finished).toBe(true);
   });
 
-  it("keeps the initial placeholder when only an incompatible environment has answered", () => {
-    // USAGE_CONTRACT_VERSION - 1 is still INSIDE the merge compatibility window
-    // (that is the point of the window: an additive bump keeps merging), so pin
-    // this to a version below the window or the environment is not stale at all.
-    const incompatible = status(
-      ENVIRONMENT_A,
-      AsyncResult.success(summary(10, USAGE_MERGE_COMPATIBLE_SINCE - 1)),
-    );
-    const state = deriveUsageState([
-      incompatible,
-      status(ENVIRONMENT_B, AsyncResult.initial(true)),
-    ]);
+  it("settles when an environment disconnects during the rescan", async () => {
+    const {
+      registry,
+      environments: [environment],
+      refresh,
+    } = harness();
+    const entry = environment!;
+    const refreshing = refresh();
+    entry.rates.resolve(AsyncResult.success(pricing));
+    await entry.scanStarted.promise;
+    registry.set(entry.presentation, null);
+    await refreshing;
+  });
 
-    expect(state).toMatchObject({ isPending: true, isPartial: false });
-    expect(state.merged.costUsd).toBe(0);
-    expect(state.merged.staleEnvironments).toEqual([ENVIRONMENT_A]);
+  it("waits for healthy environments without waiting for a recovering environment", async () => {
+    const { registry, environments, refresh } = harness(["healthy", "recovering"]);
+    const [healthy, recovering] = environments;
+    registry.set(recovering!.presentation, null);
+    let finished = false;
+    const refreshing = refresh().then(() => {
+      finished = true;
+    });
+    for (const entry of environments) entry.rates.resolve(AsyncResult.success(pricing));
+    await healthy!.scanStarted.promise;
+    expect(finished).toBe(false);
+    healthy!.scan.resolve(summary);
+    await refreshing;
+    expect(finished).toBe(true);
+  });
+
+  it("settles when connected state has no usable RPC session", async () => {
+    const {
+      environments: [environment],
+      refresh,
+    } = harness();
+    const entry = environment!;
+    const refreshing = refresh();
+    entry.rates.resolve(
+      AsyncResult.fail(
+        new EnvironmentRpcUnavailableError({
+          environmentId: entry.environmentId,
+          message: "No session",
+        }),
+      ),
+    );
+    await refreshing;
+  });
+
+  it("replaces a scan that started before pricing was refreshed", async () => {
+    const {
+      registry,
+      environments: [environment],
+      refresh,
+    } = harness();
+    const entry = environment!;
+    let reads = 0;
+    const rescanned = Promise.withResolvers<void>();
+    const query = Atom.make(
+      Effect.promise(() => {
+        reads += 1;
+        if (reads > 1) {
+          rescanned.resolve();
+          return Promise.resolve(summary);
+        }
+        return new Promise<UsageSummary>(() => {});
+      }),
+    );
+    entry.query = query;
+    const unmount = registry.mount(query);
+    expect(reads).toBe(1);
+    const refreshing = refresh();
+    entry.rates.resolve(AsyncResult.success(pricing));
+    await rescanned.promise;
+    await refreshing;
+    expect(reads).toBe(2);
+    unmount();
   });
 });

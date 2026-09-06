@@ -819,6 +819,8 @@ export const PullRequestSummary = Schema.Struct({
   isDraft: Schema.optional(Schema.Boolean),
   headBranch: TrimmedNonEmptyString,
   baseBranch: TrimmedNonEmptyString,
+  closedAt: Schema.optional(Schema.NullOr(Schema.String)),
+  mergedAt: Schema.optional(Schema.NullOr(Schema.String)),
   updatedAt: IsoDateTime,
 });
 export type PullRequestSummary = typeof PullRequestSummary.Type;

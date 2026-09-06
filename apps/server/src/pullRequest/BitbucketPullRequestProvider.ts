@@ -178,8 +178,8 @@ export const make = Effect.gen(function* () {
             ...(pullRequest.diffRevision === undefined
               ? {}
               : { diffRevision: pullRequest.diffRevision }),
-            mergedAt: pullRequest.state === "merged" ? pullRequest.updatedAt : null,
-            closedAt: pullRequest.state === "closed" ? pullRequest.updatedAt : null,
+            mergedAt: null,
+            closedAt: null,
             reviewers: pullRequest.reviewers,
             checks,
             // Bitbucket publishes no per-repository list of allowed strategies, so the ones it
@@ -206,17 +206,15 @@ export const make = Effect.gen(function* () {
         { concurrency: 3 },
       ).pipe(
         Effect.mapError(fail("getChangeRequestActivity")),
-        Effect.map(
-          ([pullRequest, comments, commits]): ProviderChangeRequestActivity => ({
-            comments: [...comments.comments, ...pullRequest.reviews].toSorted((left, right) =>
-              left.createdAt.localeCompare(right.createdAt),
-            ),
-            commentCount: comments.comments.length + pullRequest.reviews.length,
-            commentsTruncated: comments.truncated,
-            reviewThreads: comments.threads,
-            commits,
-          }),
-        ),
+        Effect.map(([pullRequest, comments, commits]): ProviderChangeRequestActivity => ({
+          comments: [...comments.comments, ...pullRequest.reviews].toSorted((left, right) =>
+            left.createdAt.localeCompare(right.createdAt),
+          ),
+          commentCount: comments.comments.length + pullRequest.reviews.length,
+          commentsTruncated: comments.truncated,
+          reviewThreads: comments.threads,
+          commits,
+        })),
       );
     },
 

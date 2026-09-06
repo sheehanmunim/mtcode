@@ -67,6 +67,8 @@ const clientSettings: ClientSettings = {
   legacySidebarEnabled: false,
   soundNotificationsEnabled: true,
   tabsEnabled: true,
+  loadBalancingEnabled: false,
+  loadBalancingWeights: { "environment-1": 75, "environment-2": 0 },
   timestampFormat: "24-hour",
   voiceTranscriptionEnabled: true,
   voiceTranscriptionProvider: "openai",

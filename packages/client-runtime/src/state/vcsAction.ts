@@ -166,14 +166,14 @@ const decodeVcsActionTargetKey = Schema.decodeUnknownSync(
   Schema.Tuple([EnvironmentId, Schema.String]),
 );
 
-export const vcsActionStateAtom = Atom.family((key: string) => {
+const vcsActionStateAtom = Atom.family((key: string) => {
   return Atom.make(EMPTY_VCS_ACTION_STATE).pipe(
     Atom.keepAlive,
     Atom.withLabel(`vcs-action:${key}`),
   );
 });
 
-export const EMPTY_VCS_ACTION_ATOM = Atom.make(EMPTY_VCS_ACTION_STATE).pipe(
+const EMPTY_VCS_ACTION_ATOM = Atom.make(EMPTY_VCS_ACTION_STATE).pipe(
   Atom.keepAlive,
   Atom.withLabel("vcs-action:null"),
 );
@@ -194,7 +194,7 @@ export function parseVcsActionTargetKey(key: string): ResolvedVcsActionTarget {
   }
 }
 
-export function getVcsActionStateAtom(target: VcsActionTarget) {
+function getVcsActionStateAtom(target: VcsActionTarget) {
   const key = getVcsActionTargetKey(target);
   return key === null ? EMPTY_VCS_ACTION_ATOM : vcsActionStateAtom(key);
 }
@@ -220,7 +220,7 @@ export function beginVcsActionState(
   };
 }
 
-export function failVcsActionState(
+function failVcsActionState(
   operation: VcsActionOperation,
   actionId: string,
   error: unknown,

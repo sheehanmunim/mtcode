@@ -16,6 +16,7 @@ import {
   BotIcon,
   GitBranchIcon,
   HistoryIcon,
+  PanelsTopLeftIcon,
   KeyboardIcon,
   Link2Icon,
   MonitorIcon,
@@ -79,6 +80,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
 > = {
   "/settings/general": Settings2Icon,
   "/settings/appearance": PaletteIcon,
+  "/settings/projects": PanelsTopLeftIcon,
   "/settings/keybindings": KeyboardIcon,
   "/settings/plugins": BlocksIcon,
   "/settings/providers": BotIcon,
@@ -93,7 +95,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/archived": ArchiveIcon,
 };
 
-export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
+const SETTINGS_NAV_ITEMS: ReadonlyArray<{
   label: string;
   to: SettingsPath;
   icon: ComponentType<{ className?: string }>;
@@ -301,13 +303,19 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
         setOpenMobile(false);
       }
       const targetId = item.targetId ?? item.id;
-      if (pathname === item.to && scrollToSettingsTarget(targetId)) {
+      if (
+        item.to !== "/settings/projects" &&
+        pathname === item.to &&
+        scrollToSettingsTarget(targetId)
+      ) {
         // Target hashes are transient and cleared after navigation. Scroll directly on the current
         // page when mounted; otherwise preserve the hash so deferred targets can handle it later.
         return;
       }
       void navigate({
         to: item.to,
+        search: (previous) =>
+          item.to === "/settings/projects" ? { ...previous, project: undefined } : previous,
         hash: targetId,
         replace: true,
         hashScrollIntoView: false,

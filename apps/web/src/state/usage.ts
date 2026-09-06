@@ -14,7 +14,7 @@ import {
   type UsageSummary,
   type UsageSummaryInput,
 } from "@t3tools/contracts";
-import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
+import { refreshUsage } from "@t3tools/client-runtime/state/usage";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 import { useCallback, useMemo } from "react";
@@ -99,7 +99,7 @@ export interface UsageView {
   /** True until at least one selected environment has answered. */
   readonly isPending: boolean;
   readonly isPartial: boolean;
-  readonly refresh: () => void;
+  readonly refresh: (input?: UsageSummaryInput) => Promise<void>;
 }
 
 export function useUsage(
@@ -142,27 +142,17 @@ export function useUsage(
     [environments, selectedEnvironmentIds],
   );
 
-  // Refreshing only the derived atom would re-read the per-environment SWR
-  // queries within their stale window and change nothing. Refresh each
-  // environment's query so the button always rescans.
-  //
-  // Each environment refetches model pricing first, so a model released since
-  // its last daily fetch gets priced by the rescan. The rescan runs whether or
-  // not the refetch succeeds: an offline environment still recounts tokens.
-  const refresh = useCallback(() => {
-    const { input } = JSON.parse(windowKey) as UsageAtomKey;
-    for (const environment of selectedEnvironments) {
-      if (environment.phase !== "connected") continue;
-      const { environmentId } = environment;
-      const query = serverEnvironment.usageSummary({ environmentId, input });
-      void runAtomCommand(
-        appAtomRegistry,
-        serverEnvironment.refreshUsageRates,
-        { environmentId, input: {} },
-        { reportFailure: false },
-      ).finally(() => appAtomRegistry.refresh(query));
-    }
-  }, [selectedEnvironments, windowKey]);
+  const refresh = useCallback(
+    (nextInput?: UsageSummaryInput) =>
+      refreshUsage({
+        registry: appAtomRegistry,
+        server: serverEnvironment,
+        presentations: environmentPresentations,
+        environmentIds: selectedEnvironments.map(({ environmentId }) => environmentId),
+        input: nextInput ?? (JSON.parse(windowKey) as UsageAtomKey).input,
+      }),
+    [selectedEnvironments, windowKey],
+  );
 
   const merged = useMemo(() => {
     const answered: EnvironmentUsage[] = selectedEnvironments.flatMap((environment) =>

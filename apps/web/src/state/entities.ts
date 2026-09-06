@@ -44,7 +44,7 @@ const EMPTY_THREAD_ERROR_ATOM = Atom.make<string | null>(null).pipe(
   Atom.withLabel("web-thread-error:empty"),
 );
 
-export const activeEnvironmentIdAtom = Atom.make<EnvironmentId | null>(null).pipe(
+const activeEnvironmentIdAtom = Atom.make<EnvironmentId | null>(null).pipe(
   Atom.keepAlive,
   Atom.withLabel("web-active-environment-id"),
 );

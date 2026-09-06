@@ -1,3 +1,5 @@
+import { RefreshIcon } from "~/components/ui/refresh-icon";
+import { Spinner } from "~/components/ui/spinner";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { pullRequestHostOf, resolveEnvironmentMachineKind, ThreadId } from "@t3tools/contracts";
@@ -29,10 +31,8 @@ import {
   LayersIcon,
   ListChecksIcon,
   PenLineIcon,
-  LoaderIcon,
   Maximize2Icon,
   Minimize2Icon,
-  RefreshCwIcon,
   SearchIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -2041,7 +2041,11 @@ function PullRequestsRouteView() {
       ) : firstLoad ? (
         <PullRequestListGhost rows={7} />
       ) : listQuery.error && entries.length === 0 ? (
-        <PullRequestsUnavailableState error={listQuery.error} onRetry={() => listQuery.refresh()} />
+        <PullRequestsUnavailableState
+          error={listQuery.error}
+          refreshing={listQuery.isPending}
+          onRetry={() => listQuery.refresh()}
+        />
       ) : carriedToNothing ? (
         <PullRequestListGhost rows={7} />
       ) : entries.length === 0 ? (
@@ -2138,7 +2142,7 @@ function PullRequestsRouteView() {
             <h2 className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground/70">
               <SparklesIcon className="size-3.5" />
               Most useful
-              {rankingPending ? <LoaderIcon aria-hidden className="size-3 animate-spin" /> : null}
+              {rankingPending ? <Spinner aria-hidden className="size-3" /> : null}
               {/* Beside what it produces rather than buried in Settings: which agent did the
                   judging is part of reading the answer, and the reader changes it exactly when
                   they disagree with the order or run that model out of quota. */}
@@ -2234,7 +2238,7 @@ function PullRequestsRouteView() {
         <div className="flex justify-center py-3 text-xs text-muted-foreground">
           {loadingMore ? (
             <span className="flex items-center gap-2">
-              <LoaderIcon aria-hidden className="size-3.5 animate-spin" />
+              <Spinner aria-hidden className="size-3.5" />
               {sentCursors === null ? "Updating pull requests" : "Loading more"}
             </span>
           ) : canContinue || pageSize < MAX_PAGE_SIZE ? (
@@ -2898,7 +2902,7 @@ function PullRequestRefreshControl({
       onClick={onRefresh}
       disabled={refreshing}
     >
-      <RefreshCwIcon className={cn("size-4", refreshing && "animate-spin")} />
+      <RefreshIcon className="size-4" refreshing={refreshing} />
     </Button>
   );
 }

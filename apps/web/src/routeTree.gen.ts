@@ -21,6 +21,7 @@ import { Route as SettingsVoiceRouteImport } from './routes/settings.voice'
 import { Route as SettingsSourceControlRouteImport } from './routes/settings.source-control'
 import { Route as SettingsSkillsRouteImport } from './routes/settings.skills'
 import { Route as SettingsProvidersRouteImport } from './routes/settings.providers'
+import { Route as SettingsProjectsRouteImport } from './routes/settings.projects'
 import { Route as SettingsPluginsRouteImport } from './routes/settings.plugins'
 import { Route as SettingsMtTeamsRouteImport } from './routes/settings.mt-teams'
 import { Route as SettingsKeybindingsRouteImport } from './routes/settings.keybindings'
@@ -97,6 +98,11 @@ const SettingsSkillsRoute = SettingsSkillsRouteImport.update({
 const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
   id: '/providers',
   path: '/providers',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsProjectsRoute = SettingsProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsPluginsRoute = SettingsPluginsRouteImport.update({
@@ -214,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/mt-teams': typeof SettingsMtTeamsRoute
   '/settings/plugins': typeof SettingsPluginsRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/skills': typeof SettingsSkillsRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/mt-teams': typeof SettingsMtTeamsRoute
   '/settings/plugins': typeof SettingsPluginsRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/skills': typeof SettingsSkillsRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/settings/keybindings': typeof SettingsKeybindingsRoute
   '/settings/mt-teams': typeof SettingsMtTeamsRoute
   '/settings/plugins': typeof SettingsPluginsRoute
+  '/settings/projects': typeof SettingsProjectsRoute
   '/settings/providers': typeof SettingsProvidersRoute
   '/settings/skills': typeof SettingsSkillsRoute
   '/settings/source-control': typeof SettingsSourceControlRoute
@@ -311,6 +320,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/mt-teams'
     | '/settings/plugins'
+    | '/settings/projects'
     | '/settings/providers'
     | '/settings/skills'
     | '/settings/source-control'
@@ -341,6 +351,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/mt-teams'
     | '/settings/plugins'
+    | '/settings/projects'
     | '/settings/providers'
     | '/settings/skills'
     | '/settings/source-control'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/settings/keybindings'
     | '/settings/mt-teams'
     | '/settings/plugins'
+    | '/settings/projects'
     | '/settings/providers'
     | '/settings/skills'
     | '/settings/source-control'
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/providers'
       fullPath: '/settings/providers'
       preLoaderRoute: typeof SettingsProvidersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/projects': {
+      id: '/settings/projects'
+      path: '/projects'
+      fullPath: '/settings/projects'
+      preLoaderRoute: typeof SettingsProjectsRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/plugins': {
@@ -639,6 +658,7 @@ interface SettingsRouteChildren {
   SettingsKeybindingsRoute: typeof SettingsKeybindingsRoute
   SettingsMtTeamsRoute: typeof SettingsMtTeamsRoute
   SettingsPluginsRoute: typeof SettingsPluginsRoute
+  SettingsProjectsRoute: typeof SettingsProjectsRoute
   SettingsProvidersRoute: typeof SettingsProvidersRoute
   SettingsSkillsRoute: typeof SettingsSkillsRoute
   SettingsSourceControlRoute: typeof SettingsSourceControlRoute
@@ -658,6 +678,7 @@ const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsKeybindingsRoute: SettingsKeybindingsRoute,
   SettingsMtTeamsRoute: SettingsMtTeamsRoute,
   SettingsPluginsRoute: SettingsPluginsRoute,
+  SettingsProjectsRoute: SettingsProjectsRoute,
   SettingsProvidersRoute: SettingsProvidersRoute,
   SettingsSkillsRoute: SettingsSkillsRoute,
   SettingsSourceControlRoute: SettingsSourceControlRoute,
