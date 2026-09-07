@@ -16,6 +16,12 @@ const HOST = "com.munim.mtcode.desktop";
 // rather than leaving those browsers unable to reach the desktop at all.
 const LEGACY_HOST = "com.t3tools.t3code.desktop";
 const GROUP_TITLE = "MT Code";
+/**
+ * Chrome's tab-group palette. Two MCP clients sharing one window are told apart
+ * by colour, not by an id in the group title: the strip is narrow, and a hash
+ * next to the product name reads as noise rather than as information.
+ */
+const GROUP_COLORS = ["blue", "cyan", "purple", "pink", "green", "yellow", "orange", "red", "grey"];
 const OWNED_STATE_KEY = "ownedState";
 
 /**
@@ -60,10 +66,12 @@ function clientState(clientId) {
   return state;
 }
 
-function groupTitleFor(clientId) {
-  // Keep the strip readable: short suffix so two agents are distinguishable.
-  const short = clientId.length <= 8 ? clientId : clientId.slice(0, 8);
-  return `${GROUP_TITLE} · ${short}`;
+function groupColorFor(clientId) {
+  // Stable per client, so a reconnecting agent lands back on its own colour
+  // rather than repainting the group the user has been watching.
+  let hash = 0;
+  for (let i = 0; i < clientId.length; i++) hash = (hash * 31 + clientId.charCodeAt(i)) >>> 0;
+  return GROUP_COLORS[hash % GROUP_COLORS.length];
 }
 
 async function persistOwnedState() {
@@ -265,14 +273,14 @@ async function ensureGroup(clientId, tabId) {
     if (state.groupId === null) {
       state.groupId = await chrome.tabs.group({ tabIds: [tabId] });
       await chrome.tabGroups.update(state.groupId, {
-        title: groupTitleFor(clientId),
-        color: "blue",
+        title: GROUP_TITLE,
+        color: groupColorFor(clientId),
       });
     } else {
       await chrome.tabs.group({ groupId: state.groupId, tabIds: [tabId] });
     }
-    // Agent tabs get the pointer favicon (not the T3 toolbar logo) as soon as
-    // they join the group, so the strip reads as "agent-owned" before the first click.
+    // Agent tabs get the pointer badge as soon as they join the group, so the
+    // strip reads as "agent-owned" before the first click.
     await markTab(tabId);
     await persistOwnedState();
     return state.groupId;
@@ -288,8 +296,8 @@ async function openTab(clientId, url) {
   await ensureGroup(clientId, tab.id);
   await persistOwnedState();
   // Pages replace their favicon on load (Spotify, YouTube, …). Re-apply the
-  // pointer whenever the document finishes, and also when the tab's own icon
-  // changes, so the strip stays on the agent cursor rather than the site logo.
+  // badge whenever the document finishes, and also when the tab's own icon
+  // changes, so the pointer is not dropped by the site's own rewrite.
   chrome.tabs.onUpdated.addListener(function badge(id, info) {
     if (id !== tab.id) return;
     if (info.status === "complete" || info.favIconUrl) markTab(tab.id);
@@ -335,7 +343,12 @@ async function closeOwnedTabs(clientId, ids, expectedGroupId) {
       // Ungroup stragglers that are not part of this client's owned set — a
       // reconnect may already have placed new agent tabs in this same group.
       const leftover = remaining.filter((t) => !state.tabs.has(t.id));
-      if (leftover.length) await chrome.tabs.ungroup(leftover.map((t) => t.id));
+      if (leftover.length) {
+        await chrome.tabs.ungroup(leftover.map((t) => t.id));
+        // They are out of the agent group now, so they should stop wearing its
+        // pointer. A client that still owns one re-badges on its next command.
+        for (const t of leftover) await unmarkTab(t.id);
+      }
     } catch {
       // The group is already gone.
     }
@@ -754,36 +767,160 @@ async function navigate(tabId, url) {
 
 // ── "the agent is using this tab" indicator ─────────────────────────────────
 //
-// Toolbar icon = T3 logo (manifest icons/). Tab favicon = the same Computer Use
-// cursor PNG the page overlay paints (icons/cursor-112.png) — one source of
-// truth with BubbleView / T3AgentCursor, scaled by Chrome in the tab strip.
+// Toolbar icon = T3 logo (manifest icons/). Tab favicon = the site's own icon,
+// dimmed, under the Computer Use cursor — composited into one SVG so the strip
+// still says *which site* a tab is while saying the agent is holding it.
 //
 // An extension cannot set a tab's favicon directly, but it can replace the
 // page's icon link, which is what Chrome renders in the tab strip. Pages
 // rewrite their own favicon (YouTube does it for notifications), so this is
 // re-applied on group join, load, favicon changes, and after each interaction.
+//
+// Both layers are inlined as data URLs. An SVG used as an image renders in
+// secure static mode and fetches nothing external, so an <image href> pointing
+// at the extension or at the site's server would come out blank.
 
-function applyFavicon(url) {
-  for (const link of document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']")) {
-    link.remove();
+/**
+ * Ink box of the pointer inside icons/cursor-224.png. The art is mostly glow,
+ * and Chrome scales the whole canvas into 16px: cropping to the arrow is the
+ * difference between a recognisable pointer and four grey pixels.
+ */
+const CURSOR_CROP = { canvas: 224, x: 105, y: 108, size: 58 };
+/** Lets us recognise our own badge when Chrome hands it back as favIconUrl. */
+const BADGE_MARK = "agent-favicon-badge";
+/** tabId → { pageUrl, icon }: the site's real icon, kept behind the badge. */
+const siteFavicons = new Map();
+/** icons/cursor-224.png inlined once per service-worker life. */
+let cursorInlined = null;
+
+async function toDataUrl(href) {
+  if (href.startsWith("data:")) return href;
+  try {
+    const res = await fetch(href);
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `data:${res.headers.get("content-type") || "image/png"};base64,${btoa(binary)}`;
+  } catch {
+    // Blocked host, offline, or a favicon the page never actually serves.
+    return null;
   }
-  const link = document.createElement("link");
-  link.rel = "icon";
-  link.type = "image/png";
-  link.href = url;
-  document.head.appendChild(link);
+}
+
+function inlineCursor() {
+  cursorInlined ??= toDataUrl(chrome.runtime.getURL("icons/cursor-224.png"));
+  return cursorInlined;
+}
+
+function isBadge(href) {
+  return (
+    typeof href === "string" &&
+    href.startsWith("data:image/svg+xml,") &&
+    decodeURIComponent(href).includes(BADGE_MARK)
+  );
+}
+
+/// The site icon to draw under the pointer. Once badged, the tab reports our
+/// own SVG as its favicon, so re-reading it would nest the badge in itself on
+/// every re-apply; the cached original stands in until the page navigates.
+async function siteFavicon(tabId) {
+  let tab;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch {
+    return null;
+  }
+  const cached = siteFavicons.get(tabId);
+  if (cached && cached.pageUrl === tab.url) return cached.icon;
+  if (!tab.favIconUrl || isBadge(tab.favIconUrl)) return cached?.icon ?? null;
+  const icon = await toDataUrl(tab.favIconUrl);
+  siteFavicons.set(tabId, { pageUrl: tab.url, icon });
+  return icon;
+}
+
+function escapeAttribute(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function badgeHref(cursor, site) {
+  const scale = 32 / CURSOR_CROP.size;
+  const size = (CURSOR_CROP.canvas * scale).toFixed(2);
+  const layers = site
+    ? [`<image href="${escapeAttribute(site)}" width="32" height="32" opacity="0.3"/>`]
+    : [];
+  layers.push(
+    `<image href="${escapeAttribute(cursor)}" x="${(-CURSOR_CROP.x * scale).toFixed(2)}" y="${(-CURSOR_CROP.y * scale).toFixed(2)}" width="${size}" height="${size}"/>`,
+  );
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" data-badge="${BADGE_MARK}" width="32" height="32" viewBox="0 0 32 32">${layers.join("")}</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function applyFavicon(badge) {
+  const links = Array.from(
+    document.querySelectorAll("link[rel~='icon'], link[rel='shortcut icon']"),
+  );
+  if (links.length === 0) {
+    const link = document.createElement("link");
+    link.rel = "icon";
+    link.dataset.agentFaviconAdded = "true";
+    (document.head ?? document.documentElement).appendChild(link);
+    links.push(link);
+  }
+  for (const link of links) {
+    // Already wearing this exact badge: leaving it alone stops the favicon
+    // listener that brought us here from re-triggering on our own write.
+    if (link.getAttribute("href") === badge) continue;
+    // Remember the real icon once: a re-apply must not record the badge as it.
+    if (link.dataset.agentFaviconBadge !== "true") {
+      link.dataset.agentFaviconOriginal = link.getAttribute("href") ?? "";
+      link.dataset.agentFaviconBadge = "true";
+    }
+    link.href = badge;
+  }
+}
+
+function restoreFavicon() {
+  for (const link of document.querySelectorAll("link[data-agent-favicon-badge='true']")) {
+    if (link.dataset.agentFaviconAdded === "true") {
+      link.remove();
+      continue;
+    }
+    const original = link.dataset.agentFaviconOriginal;
+    delete link.dataset.agentFaviconBadge;
+    delete link.dataset.agentFaviconOriginal;
+    if (original) link.href = original;
+    else link.removeAttribute("href");
+  }
 }
 
 async function markTab(tabId) {
   try {
+    const [cursor, site] = await Promise.all([inlineCursor(), siteFavicon(tabId)]);
+    if (!cursor) return;
     await chrome.scripting.executeScript({
       target: { tabId },
       func: applyFavicon,
-      args: [chrome.runtime.getURL("icons/cursor-112.png")],
+      args: [badgeHref(cursor, site)],
     });
   } catch {
     // Chrome's own pages (chrome://, the Web Store) refuse injection; the tab
     // still works, it just cannot show the badge.
+  }
+}
+
+/// Put the site's own icon back, for a tab that leaves the agent group but
+/// stays open.
+async function unmarkTab(tabId) {
+  siteFavicons.delete(tabId);
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, func: restoreFavicon });
+  } catch {
+    // Same injection limits as markTab; the tab is being let go either way.
   }
 }
 
@@ -863,6 +1000,7 @@ async function handleCommand(msg, replyPort = port) {
 }
 
 chrome.tabs.onRemoved.addListener((tabId) => {
+  siteFavicons.delete(tabId);
   if (!tabOwner.has(tabId) && !attached.has(tabId)) return;
   const clientId = tabOwner.get(tabId);
   if (clientId) clients.get(clientId)?.tabs.delete(tabId);
