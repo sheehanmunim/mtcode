@@ -404,7 +404,8 @@ sessionErrorLayer("CodexAdapterLive session errors", (it) => {
         Stream.runHead,
         Effect.forkChild,
       );
-      yield* adapter.compactThread!(threadId);
+      NodeAssert.ok(adapter.compaction?.type === "native");
+      yield* adapter.compaction.start(threadId);
       yield* runtime.emit({
         id: asEventId("evt-compaction-item-completed"),
         kind: "notification",

@@ -777,6 +777,7 @@ export function useThreadActions() {
       pinThread,
       reorderActiveThread,
       reorderPinnedThread,
+      reorderActiveThread,
       settleThread,
       snoozeThread,
       unarchiveThread,

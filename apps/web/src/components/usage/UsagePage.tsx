@@ -206,8 +206,6 @@ export function UsagePage() {
     if (refreshingRef.current) return;
 
     if (showingLimits) {
-      // Synthetic data has nothing to re-read.
-      if (fixture) return;
       refreshingRef.current = true;
       setIsRefreshing(true);
       void Promise.all(
@@ -393,10 +391,7 @@ export function UsagePage() {
                   : `Select an environment to see ${showingLimits ? "limits" : "usage"}.`}
               </p>
             ) : showingLimits ? (
-              <UsageLimitsSection
-                selectedEnvironmentIds={selectedEnvironmentIds}
-                fixture={fixture}
-              />
+              <UsageLimitsSection selectedEnvironmentIds={selectedEnvironmentIds} />
             ) : isPending ? (
               <UsageSkeleton />
             ) : (

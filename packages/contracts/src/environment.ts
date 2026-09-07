@@ -21,13 +21,14 @@ export const ExecutionEnvironmentPlatformArch = Schema.Literals(["arm64", "x64",
 export type ExecutionEnvironmentPlatformArch = typeof ExecutionEnvironmentPlatformArch.Type;
 
 /**
- * The curated set of machine shapes an environment can wear as its icon.
+ * The curated set of machine shapes and OS identities an environment can wear as its icon.
  * Servers detect one from the hardware they run on (`platform.machine`), and
  * the `environmentIcon` server setting lets a user pick one instead.
  */
 export const ENVIRONMENT_MACHINE_KINDS = [
   "server",
   "cloud",
+  "linux",
   "desktop",
   "laptop",
   "mac-mini",
@@ -120,8 +121,8 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   /** Server understands thread.pin.reorder (and orderKey on thread.pin).
       Same version-skew contract as threadSettlement. */
   threadPinReorder: Schema.optionalKey(Schema.Boolean),
-  /** Server understands thread.active.reorder. Same version-skew contract
-      as threadSettlement. */
+  /** Server persists manual Active order through thread.active.reorder.
+      Same version-skew contract as threadSettlement. */
   threadActiveReorder: Schema.optionalKey(Schema.Boolean),
   /** Server understands regenerateTitle on thread.meta.update. Absent on
       older servers, so clients hide the action instead of sending it. */

@@ -60,6 +60,7 @@ import { SettingsLegalRouteScreen } from "./features/settings/SettingsLegalRoute
 import { SettingsProjectGroupingRouteScreen } from "./features/settings/SettingsProjectGroupingRouteScreen";
 import { SettingsVoiceDictationRouteScreen } from "./features/settings/SettingsVoiceDictationRouteScreen";
 import { SettingsMtTeamsRouteScreen } from "./mtTeams/MtTeamsScreen";
+import { UsageLimitAccountScreen } from "./features/usage/UsageLimitsPooled";
 import { UsageRouteScreen } from "./features/usage/UsageRouteScreen";
 import { SettingsRouteScreen } from "./features/settings/SettingsRouteScreen";
 import { ShowcaseCaptureCoordinator } from "./features/showcase/ShowcaseCaptureCoordinator";
@@ -209,6 +210,10 @@ const SettingsContentStack = createNativeStackNavigator({
       options: {
         title: "Client Storage",
       },
+    }),
+    SettingsUsageAccount: createNativeStackScreen({
+      screen: UsageLimitAccountScreen,
+      options: { title: "Account" },
     }),
     SettingsUsage: createNativeStackScreen({
       screen: UsageRouteScreen,

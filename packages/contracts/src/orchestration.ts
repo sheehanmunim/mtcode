@@ -544,6 +544,7 @@ export const OrchestrationThread = Schema.Struct({
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
   linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
+  branchPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
   latestTurn: Schema.NullOr(OrchestrationLatestTurn),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -572,10 +573,9 @@ export const OrchestrationThread = Schema.Struct({
   // servers never need each other's threads to agree on the merged list.
   // Optional so payloads from pre-reorder servers still decode.
   pinOrderKey: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
-  // Fractional index for user-arranged active (unsettled) order. Sticky:
-  // nothing clears it, so a thread returning to the active shelf resumes
-  // its manual slot. Optional so payloads from pre-reorder servers still
-  // decode.
+  // Fractional index for user-arranged active (unsettled) order. Keyless
+  // threads retain their creation/re-entry order above the arranged run.
+  // Optional so payloads from pre-reorder servers still decode.
   activeOrderKey: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   // Pending-only state. Optional so older servers remain compatible.
   titleRegeneration: Schema.optional(Schema.NullOr(ThreadTitleRegeneration)),
@@ -630,6 +630,7 @@ export const OrchestrationThreadShell = Schema.Struct({
   branch: Schema.NullOr(TrimmedNonEmptyString),
   worktreePath: Schema.NullOr(TrimmedNonEmptyString),
   linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
+  branchPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
   latestTurn: Schema.NullOr(OrchestrationLatestTurn),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -1366,6 +1367,23 @@ const ThreadTitleRegenerationCompleteCommand = Schema.Struct({
   title: Schema.optional(TrimmedNonEmptyString),
 });
 
+const ThreadPullRequestSyncCommand = Schema.Struct({
+  type: Schema.Literal("thread.pull-request.sync"),
+  commandId: CommandId,
+  threadId: ThreadId,
+  projectId: ProjectId,
+  snapshotSequence: NonNegativeInt,
+  expected: Schema.Struct({
+    workspaceRoot: TrimmedNonEmptyString,
+    branch: Schema.NullOr(TrimmedNonEmptyString),
+    worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+    linkedPullRequest: Schema.NullOr(ThreadLinkedPullRequest),
+    branchPullRequest: Schema.NullOr(ThreadLinkedPullRequest),
+  }),
+  branchPullRequest: Schema.NullOr(ThreadLinkedPullRequest),
+  linkedPullRequest: Schema.optional(ThreadLinkedPullRequest),
+});
+
 const InternalOrchestrationCommand = Schema.Union([
   ThreadQueuedTurnDispatchCommand,
   ThreadAutoSettleCommand,
@@ -1380,6 +1398,7 @@ const InternalOrchestrationCommand = Schema.Union([
   ThreadTitleRegenerationCompleteCommand,
   ThreadGoalContinueCommand,
   ThreadGoalBlockCommand,
+  ThreadPullRequestSyncCommand,
 ]);
 export type InternalOrchestrationCommand = typeof InternalOrchestrationCommand.Type;
 
@@ -1597,6 +1616,9 @@ export const ThreadActiveReorderedPayload = Schema.Struct({
 
 export const ThreadMetaUpdatedPayload = Schema.Struct({
   threadId: ThreadId,
+  // Order updates use this existing event so older clients can ignore the
+  // new field while continuing to decode the event stream.
+  activeOrderKey: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   title: Schema.optional(TrimmedNonEmptyString),
   /** Intent marker consumed by the title-generation reactor. Keeping this on
       the existing event lets older clients safely ignore the new field. */
@@ -1609,6 +1631,7 @@ export const ThreadMetaUpdatedPayload = Schema.Struct({
   branch: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   worktreePath: Schema.optional(Schema.NullOr(TrimmedNonEmptyString)),
   linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
+  branchPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
   updatedAt: IsoDateTime,
 });
 

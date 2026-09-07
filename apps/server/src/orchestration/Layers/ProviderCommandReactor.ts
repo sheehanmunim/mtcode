@@ -898,7 +898,9 @@ const make = Effect.gen(function* () {
     readonly interactionMode?: "default" | "plan";
     readonly createdAt: string;
   }) {
-    const thread = yield* resolveThreadDetail(input.threadId);
+    // Only the hand-off prelude needs the transcript, so the shell answers the
+    // common path and old message bodies stay unread.
+    const thread = yield* resolveThreadShell(input.threadId);
     if (!thread) {
       return yield* Effect.die(
         new Error(`Thread '${input.threadId}' was not found in read model.`),
@@ -912,10 +914,13 @@ const make = Effect.gen(function* () {
       threadModelSelections.set(input.threadId, input.modelSelection);
     }
     const normalizedInput = toNonEmptyProviderInput(input.messageText);
-    const handoffPrelude = ensuredSession.handedOff
+    const handoffDetail = ensuredSession.handedOff
+      ? yield* resolveThreadDetail(input.threadId)
+      : null;
+    const handoffPrelude = handoffDetail
       ? renderProviderHandoffPrelude({
-          messages: thread.messages,
-          activities: thread.activities,
+          messages: handoffDetail.messages,
+          activities: handoffDetail.activities,
           ...(input.messageId !== undefined ? { excludeMessageId: input.messageId } : {}),
           maxChars: Math.min(
             HANDOFF_TRANSCRIPT_MAX_CHARS,
@@ -1255,24 +1260,41 @@ const make = Effect.gen(function* () {
       return;
     }
 
-    const thread = yield* resolveThreadDetail(event.payload.threadId);
+    const thread = yield* resolveThreadShell(event.payload.threadId);
     if (!thread) {
       return;
     }
     // A Continuation starts a Turn with no user message: the Objective is
     // rendered into T3-authored prompt text instead.
     const messageId = event.payload.messageId;
-    const continuationPrompt =
+    // The shell carries only a truncated objective preview, so a Continuation
+    // re-reads the thread detail for the full Objective text.
+    const continuationGoal =
       messageId === undefined && thread.goal?.status === "active"
-        ? buildGoalContinuationPrompt(thread.goal.objective)
+        ? ((yield* resolveThreadDetail(event.payload.threadId))?.goal ?? null)
+        : null;
+    const continuationPrompt =
+      continuationGoal?.status === "active"
+        ? buildGoalContinuationPrompt(continuationGoal.objective)
         : null;
     if (messageId === undefined && continuationPrompt === null) {
       return;
     }
 
-    const message =
-      messageId === undefined ? null : thread.messages.find((entry) => entry.id === messageId);
-    if (messageId !== undefined && (!message || message.role !== "user")) {
+    // Upstream reads the turn's opening message (and whether the thread has
+    // other user messages) from the projection. A Continuation has no such
+    // message, so the lookup is skipped rather than failed.
+    const turnStart =
+      messageId === undefined
+        ? null
+        : yield* projectionSnapshotQuery.getTurnStartMessage({
+            threadId: thread.id,
+            messageId,
+          });
+    if (
+      turnStart !== null &&
+      (Option.isNone(turnStart) || turnStart.value.message.role !== "user")
+    ) {
       yield* appendProviderFailureActivity({
         threadId: event.payload.threadId,
         kind: "provider.turn.start.failed",
@@ -1284,6 +1306,9 @@ const make = Effect.gen(function* () {
       });
       return;
     }
+    const turnStartValue = turnStart !== null && Option.isSome(turnStart) ? turnStart.value : null;
+    const message = turnStartValue?.message ?? null;
+    const hasOtherUserMessages = turnStartValue?.hasOtherUserMessages ?? false;
     const appendTurnStartFailure = (summary: string, detail: string) =>
       appendProviderFailureActivity({
         threadId: event.payload.threadId,
@@ -1382,24 +1407,14 @@ const make = Effect.gen(function* () {
     const attachments = message?.attachments;
 
     // First-turn work (worktree branch, title generation) belongs to the
-    // first REAL user message: corrections never count, compact commands
-    // never count, and with queued messages present the turn must be for
-    // that first message specifically.
-    const isCompactCommand =
-      message !== null && message !== undefined && isCompactCommandMessage(message);
-    const nonCompactUserMessageCount = thread.messages.filter(
-      (entry) => entry.role === "user" && !isCompactCommandMessage(entry),
-    ).length;
+    // first REAL user message: corrections never count and compact commands
+    // never count. A Continuation is never a first turn.
+    const isCompactCommand = message !== null && isCompactCommandMessage(message);
     const isFirstUserMessageTurn =
       message !== null &&
-      message !== undefined &&
+      !hasOtherUserMessages &&
       !isCorrectionMessage(message) &&
-      !isCompactCommand &&
-      nonCompactUserMessageCount > 0 &&
-      thread.messages.find(
-        (entry) =>
-          entry.role === "user" && !isCorrectionMessage(entry) && !isCompactCommandMessage(entry),
-      )?.id === messageId;
+      !isCompactCommand;
     if (isFirstUserMessageTurn) {
       const project = yield* resolveProject(thread.projectId);
       const generationCwd =
@@ -1473,7 +1488,7 @@ const make = Effect.gen(function* () {
         ),
       );
     if (isCompactCommand) {
-      if (nonCompactUserMessageCount === 0) {
+      if (!hasOtherUserMessages) {
         return yield* appendTurnStartFailure(
           "Context compaction failed",
           "Context compaction requires an existing conversation.",

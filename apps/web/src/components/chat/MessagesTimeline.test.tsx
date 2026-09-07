@@ -1,5 +1,4 @@
 import { CheckpointRef, EnvironmentId, MessageId, TurnId } from "@t3tools/contracts";
-import { codexFeedbackMessage } from "@t3tools/client-runtime/state/threads";
 import { act, createRef, useLayoutEffect, type ReactNode, type Ref } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { create, type ReactTestRenderer } from "react-test-renderer";
@@ -189,11 +188,11 @@ function buildProps() {
     listRef: createRef<LegendListRef | null>(),
     latestTurn: null,
     runningTurnId: null,
-    turnDiffSummaryByAssistantMessageId: new Map(),
+    turnDiffSummaries: [],
     routeThreadKey: "environment-local:thread-1",
     onOpenTurnDiff: () => {},
-    revertTurnCountByUserMessageId: new Map(),
-    onRevertUserMessage: () => {},
+    supportsConversationRollback: false,
+    onRevertToTurnCount: () => {},
     onCancelQueuedMessage: () => {},
     isRevertingCheckpoint: false,
     onImageExpand: () => {},
@@ -242,6 +241,38 @@ function buildAssistantTimelineEntry(text: string) {
       ...entry.message,
       role: "assistant" as const,
     },
+  };
+}
+
+function buildRevertableTimeline(text: string) {
+  const userEntry = buildUserTimelineEntry(text);
+  const assistantMessageId = MessageId.make("message-assistant-revert");
+  const turnId = TurnId.make("turn-revert");
+  const assistantEntry = {
+    ...buildAssistantTimelineEntry("Done."),
+    id: "entry-2",
+    message: {
+      ...buildAssistantTimelineEntry("Done.").message,
+      id: assistantMessageId,
+      turnId,
+    },
+  };
+  return {
+    userEntry,
+    timelineEntries: [userEntry, assistantEntry],
+    // Revert is offered from the assistant turn that follows the user message,
+    // and only once its checkpoint is ready.
+    turnDiffSummaries: [
+      {
+        turnId,
+        checkpointTurnCount: 2,
+        checkpointRef: CheckpointRef.make("checkpoint-revert"),
+        status: "ready" as const,
+        files: [{ path: "README.md", kind: "modified" as const, additions: 1, deletions: 0 }],
+        assistantMessageId,
+        completedAt: MESSAGE_CREATED_AT,
+      },
+    ],
   };
 }
 
@@ -334,61 +365,6 @@ describe("MessagesTimeline", () => {
     },
   );
 
-  it("renders a feedback command and its pending response as normal thread messages", () => {
-    const submission = {
-      id: MessageId.make("feedback-command"),
-      command: "/feedback The agent stopped early.",
-      createdAt: MESSAGE_CREATED_AT,
-      status: "uploading" as const,
-    };
-    const messages = [
-      codexFeedbackMessage(submission),
-      codexFeedbackMessage(submission, "assistant"),
-    ];
-    const markup = renderToStaticMarkup(
-      <MessagesTimeline
-        {...buildProps()}
-        timelineEntries={messages.map((message) => ({
-          id: message.id,
-          kind: "message" as const,
-          createdAt: message.createdAt,
-          message,
-        }))}
-      />,
-    );
-
-    expect(markup).toContain("/feedback The agent stopped early.");
-    expect(markup).toContain("Sending feedback to OpenAI...");
-  });
-
-  it("renders the returned Codex thread ID in the feedback response", () => {
-    const submission = {
-      id: MessageId.make("feedback-command"),
-      command: "/feedback The agent stopped early.",
-      createdAt: MESSAGE_CREATED_AT,
-      status: "sent" as const,
-      feedbackId: "codex-thread-1",
-    };
-    const messages = [
-      codexFeedbackMessage(submission),
-      codexFeedbackMessage(submission, "assistant"),
-    ];
-    const markup = renderToStaticMarkup(
-      <MessagesTimeline
-        {...buildProps()}
-        timelineEntries={messages.map((message) => ({
-          id: message.id,
-          kind: "message" as const,
-          createdAt: message.createdAt,
-          message,
-        }))}
-      />,
-    );
-
-    expect(markup).toContain("Feedback sent to OpenAI.");
-    expect(markup).toContain("codex-thread-1");
-  });
-
   it("renders elapsed time for a completed turn", () => {
     const turnId = TurnId.make("turn-with-fold");
     const assistantEntry = buildAssistantTimelineEntry("Done.");
@@ -454,22 +430,17 @@ describe("MessagesTimeline", () => {
             },
           },
         ]}
-        turnDiffSummaryByAssistantMessageId={
-          new Map([
-            [
-              assistantMessageId,
-              {
-                turnId,
-                checkpointTurnCount: 1,
-                checkpointRef: CheckpointRef.make("checkpoint-with-files"),
-                status: "ready",
-                files: [{ path: "README.md", kind: "modified", additions: 2, deletions: 1 }],
-                assistantMessageId,
-                completedAt: MESSAGE_CREATED_AT,
-              },
-            ],
-          ])
-        }
+        turnDiffSummaries={[
+          {
+            turnId,
+            checkpointTurnCount: 1,
+            checkpointRef: CheckpointRef.make("checkpoint-with-files"),
+            status: "ready",
+            files: [{ path: "README.md", kind: "modified", additions: 2, deletions: 1 }],
+            assistantMessageId,
+            completedAt: MESSAGE_CREATED_AT,
+          },
+        ]}
       />,
     );
 
@@ -905,13 +876,14 @@ describe("MessagesTimeline", () => {
   });
 
   it("keeps Edit available when a completed turn also offers Revert", () => {
-    const entry = buildUserTimelineEntry("Completed request.");
+    const revertable = buildRevertableTimeline("Completed request.");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
         {...buildProps()}
-        editableMessageId={entry.message.id}
-        revertTurnCountByUserMessageId={new Map([[entry.message.id, 0]])}
-        timelineEntries={[entry]}
+        supportsConversationRollback
+        editableMessageId={revertable.userEntry.message.id}
+        turnDiffSummaries={revertable.turnDiffSummaries}
+        timelineEntries={revertable.timelineEntries}
       />,
     );
 
@@ -920,14 +892,15 @@ describe("MessagesTimeline", () => {
   });
 
   it("keeps message actions visible but disabled while work is in progress", () => {
-    const entry = buildUserTimelineEntry("Completed request.");
+    const revertable = buildRevertableTimeline("Completed request.");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
         {...buildProps()}
-        editableMessageId={entry.message.id}
-        revertTurnCountByUserMessageId={new Map([[entry.message.id, 0]])}
+        supportsConversationRollback
+        editableMessageId={revertable.userEntry.message.id}
+        turnDiffSummaries={revertable.turnDiffSummaries}
         isWorking
-        timelineEntries={[entry]}
+        timelineEntries={revertable.timelineEntries}
       />,
     );
 

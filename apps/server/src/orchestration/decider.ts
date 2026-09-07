@@ -3,6 +3,7 @@ import {
   EventId,
   MessageId,
   getThreadMessageCorrectionEligibility,
+  ThreadLinkedPullRequest,
   UserInputRequestedPayload,
   isImportedAgentSessionMessageId,
   type OrchestrationCommand,
@@ -46,6 +47,7 @@ import { threadHasQueuedTurnStart } from "./ThreadSettlementPolicy.ts";
 
 const nowIso = Effect.map(DateTime.now, DateTime.formatIso);
 const decodeUserInputRequestedPayload = Schema.decodeUnknownOption(UserInputRequestedPayload);
+const threadPullRequestLinksEqual = Schema.toEquivalence(Schema.NullOr(ThreadLinkedPullRequest));
 
 function formatThreadRelayMessage(input: {
   readonly sourceThreadId: string;
@@ -1388,21 +1390,19 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         command,
         threadId: command.threadId,
       });
-      // Pinned threads live in the pinned block and are arranged with
-      // thread.pin.reorder; rejecting keeps a raced reorder-after-pin from
-      // scrambling the active shelf underneath a pin.
-      if (thread.pinnedAt != null) {
-        return yield* Effect.fail(
-          new OrchestrationCommandInvariantError({
-            commandType: command.type,
-            detail: `thread ${command.threadId} is pinned and cannot be reordered in the active shelf`,
-          }),
-        );
-      }
-      // Idempotent by re-emission (see thread.settle): a duplicate drop on
-      // the same slot keeps the existing updatedAt so it projects as a no-op.
-      const keyUnchanged = thread.activeOrderKey === command.orderKey;
       const occurredAt = yield* nowIso;
+      // Snooze retains this slot. Changing it cannot wake the thread, and
+      // accepting it handles races with snooze and retained wake timestamps.
+      if (
+        thread.deletedAt !== null ||
+        thread.pinnedAt != null ||
+        thread.settledOverride === "settled"
+      ) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `thread ${command.threadId} is not active and cannot be reordered`,
+        });
+      }
       return {
         ...(yield* withEventBase({
           aggregateKind: "thread",
@@ -1410,11 +1410,12 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           occurredAt,
           commandId: command.commandId,
         })),
-        type: "thread.active-reordered",
+        type: "thread.meta-updated",
         payload: {
           threadId: command.threadId,
-          orderKey: command.orderKey,
-          updatedAt: keyUnchanged ? thread.updatedAt : occurredAt,
+          activeOrderKey: command.orderKey,
+          // Arranging the list is not thread activity or a lifecycle transition.
+          updatedAt: thread.updatedAt,
         },
       };
     }
@@ -1465,6 +1466,63 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
             ? { linkedPullRequest: command.linkedPullRequest }
             : {}),
           updatedAt: occurredAt,
+        },
+      };
+    }
+
+    case "thread.pull-request.sync": {
+      const thread = yield* requireThreadNotArchived({
+        readModel,
+        command,
+        threadId: command.threadId,
+      });
+      if (thread.deletedAt !== null) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `thread ${command.threadId} was deleted before pull request discovery`,
+        });
+      }
+      if (
+        thread.projectId !== command.projectId ||
+        thread.branch !== command.expected.branch ||
+        thread.worktreePath !== command.expected.worktreePath ||
+        !threadPullRequestLinksEqual(
+          thread.linkedPullRequest ?? null,
+          command.expected.linkedPullRequest,
+        ) ||
+        !threadPullRequestLinksEqual(
+          thread.branchPullRequest ?? null,
+          command.expected.branchPullRequest,
+        )
+      ) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `thread ${command.threadId} changed before pull request discovery`,
+        });
+      }
+      const project = yield* requireProject({ readModel, command, projectId: command.projectId });
+      if (project.deletedAt !== null || project.workspaceRoot !== command.expected.workspaceRoot) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `project ${command.projectId} changed before pull request discovery`,
+        });
+      }
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "thread",
+          aggregateId: command.threadId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "thread.meta-updated",
+        payload: {
+          threadId: command.threadId,
+          branchPullRequest: command.branchPullRequest,
+          ...(command.linkedPullRequest !== undefined
+            ? { linkedPullRequest: command.linkedPullRequest }
+            : {}),
+          updatedAt: thread.updatedAt,
         },
       };
     }

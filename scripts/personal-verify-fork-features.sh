@@ -92,7 +92,10 @@ require apps/web/src/components/chat/ChatHeader.tsx "ComputerViewDialog" "comput
 # Rows read the linked PR from the host and hold merged/closed state in the
 # parent atom; a merge dropped this once and left the sidebar blind to links.
 require apps/web/src/components/Sidebar.tsx "useLinkedThreadPullRequest(" "sidebar rows read linked PR status"
-require apps/web/src/components/Sidebar.tsx "onChangeRequestSnapshot={setThreadChangeRequestSnapshot}" "sidebar rows publish PR snapshots to the shared atom"
+# Upstream #10101 (223ff4490) moved PR linking to the server, deleting the
+# client-side ThreadChangeRequestSnapshot atom this used to check. The badge
+# itself is the fork feature, so the check now follows it to its new source.
+require apps/web/src/components/Sidebar.tsx "prStatusIndicator(pr, linkedPullRequestStatus?.sourceControlProvider)" "sidebar renders the linked-PR badge"
 
 # --- Artwork + app icon pickers (44cf90dc0, 0efc0e293) ---
 require apps/web/src/components/settings/SettingsPanels.tsx "SidebarArtworkRow" "artwork picker in settings"

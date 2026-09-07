@@ -28,7 +28,6 @@ import { environmentPresentations } from "./presentation";
 import { serverEnvironment } from "./server";
 import {
   getEnvironmentUsageLoadingState,
-  resolveEnvironmentUsageScope,
   type EnvironmentUsageOption,
 } from "./usageEnvironmentScope";
 
@@ -36,6 +35,7 @@ export type { EnvironmentUsageOption } from "./usageEnvironmentScope";
 
 export interface EnvironmentUsageStatus extends EnvironmentUsageOption {
   readonly isPending: boolean;
+  readonly isConnected: boolean;
   /** A connected usage query failed. Connection coverage uses `phase`. */
   readonly error: string | null;
   readonly summary: UsageSummary | null;
@@ -79,6 +79,7 @@ const usageByWindowAtom = Atom.family((key: string) =>
           (option.phase === "available" && connectionResult.waiting) ||
           option.phase === "connecting" ||
           (option.phase === "connected" && result.waiting),
+        isConnected: option.phase === "connected",
         error: failed ? "This environment could not report usage." : null,
         summary: Option.getOrNull(AsyncResult.value(result)),
       });
@@ -98,18 +99,24 @@ export interface UsageView {
   readonly options: readonly EnvironmentUsageOption[];
   /** Coverage entries in the active filter. */
   readonly environments: readonly EnvironmentUsageStatus[];
-  readonly selectedEnvironmentId: EnvironmentId | null;
-  /** True until at least one connected environment has answered. */
+  readonly selectedEnvironments: readonly EnvironmentUsageStatus[];
+  /** True until at least one selected, connected environment has answered. */
   readonly isPending: boolean;
+  /**
+   * True while environments that have not failed are still answering. Failed
+   * environments are reported in the environment menu and the coverage notice:
+   * totals will not improve by waiting on them, so they must not read as
+   * "still reporting".
+   */
   readonly isPartial: boolean;
   readonly refresh: (input?: UsageSummaryInput) => Promise<void>;
 }
 
 export function useUsage(
   input: UsageSummaryInput,
-  selectedEnvironmentId: EnvironmentId | null,
+  selectedEnvironmentIds: ReadonlySet<EnvironmentId> | null = null,
 ): UsageView {
-  const key = useMemo(
+  const windowKey = useMemo(
     () =>
       JSON.stringify({
         input: {
@@ -132,15 +139,16 @@ export function useUsage(
       input.clientContractVersion,
     ],
   );
-  const atom = usageByWindowAtom(key);
+  const atom = usageByWindowAtom(windowKey);
   const value = useAtomValue(atom);
-  const scope = resolveEnvironmentUsageScope(value.options, selectedEnvironmentId);
-  const environments = useMemo(() => {
-    if (scope.selectedEnvironmentId === null) return value.environments;
-    return value.environments.filter(
-      (environment) => environment.environmentId === scope.selectedEnvironmentId,
-    );
-  }, [scope.selectedEnvironmentId, value.environments]);
+  const environments = value.environments;
+  const selectedEnvironments = useMemo(
+    () =>
+      selectedEnvironmentIds === null
+        ? environments
+        : environments.filter(({ environmentId }) => selectedEnvironmentIds.has(environmentId)),
+    [environments, selectedEnvironmentIds],
+  );
 
   // Refreshing only the derived atom would re-read the per-environment SWR
   // queries within their stale window and change nothing. The shared helper
@@ -154,16 +162,16 @@ export function useUsage(
         registry: appAtomRegistry,
         server: serverEnvironment,
         presentations: environmentPresentations,
-        environmentIds: environments.flatMap(({ environmentId, phase }) =>
+        environmentIds: selectedEnvironments.flatMap(({ environmentId, phase }) =>
           phase === "connected" ? [environmentId] : [],
         ),
-        input: nextInput ?? (JSON.parse(key) as UsageAtomKey).input,
+        input: nextInput ?? (JSON.parse(windowKey) as UsageAtomKey).input,
       }),
-    [environments, key],
+    [selectedEnvironments, windowKey],
   );
 
   const merged = useMemo(() => {
-    const answered: EnvironmentUsage[] = environments.flatMap((environment) =>
+    const answered: EnvironmentUsage[] = selectedEnvironments.flatMap((environment) =>
       environment.summary === null
         ? []
         : [
@@ -175,15 +183,15 @@ export function useUsage(
           ],
     );
     return mergeUsage(answered, USAGE_CONTRACT_VERSION);
-  }, [environments]);
+  }, [selectedEnvironments]);
 
-  const loadingState = getEnvironmentUsageLoadingState(environments);
+  const loadingState = getEnvironmentUsageLoadingState(selectedEnvironments);
 
   return {
     merged,
     options: value.options,
     environments,
-    selectedEnvironmentId: scope.selectedEnvironmentId,
+    selectedEnvironments,
     isPending: !value.isCatalogReady || loadingState.isPending,
     isPartial: loadingState.isPartial,
     refresh,

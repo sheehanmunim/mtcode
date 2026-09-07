@@ -63,6 +63,10 @@ import Migration0048 from "./Migrations/044_ClearAutomaticProjectModelDefaults.t
 import Migration0049 from "./Migrations/045_ProjectionProjectsAutoPull.ts";
 import Migration0050 from "./Migrations/046_RepairAutomaticSettlementTimestamps.ts";
 import Migration0051 from "./Migrations/047_ProjectionProjectIcon.ts";
+// Upstream 048; renumbered to the next free fork id. Upstream's
+// 049_ProjectionThreadsActiveOrderKey duplicates fork migration 43, so it is not
+// re-registered here.
+import Migration0052 from "./Migrations/048_ProjectionThreadBranchPullRequest.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -126,6 +130,7 @@ export const migrationEntries = [
   [49, "ProjectionProjectsAutoPull", Migration0049],
   [50, "RepairAutomaticSettlementTimestamps", Migration0050],
   [51, "ProjectionProjectIcon", Migration0051],
+  [52, "ProjectionThreadBranchPullRequest", Migration0052],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);

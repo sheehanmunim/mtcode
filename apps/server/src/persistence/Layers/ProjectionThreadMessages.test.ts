@@ -1,4 +1,4 @@
-import { MessageId, ThreadId } from "@t3tools/contracts";
+import { MessageId, ThreadId, TurnId } from "@t3tools/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -271,6 +271,52 @@ layer("ProjectionThreadMessageRepository", (it) => {
         assert.equal(row.value.correctionTargetMessageId, targetMessageId);
         assert.equal(row.value.correctionReplacementText, "replacement");
       }
+    }),
+  );
+
+  it.effect("checks assistant turn state without hydrating message text", () =>
+    Effect.gen(function* () {
+      const repository = yield* ProjectionThreadMessageRepository;
+      const threadId = ThreadId.make("thread-assistant-turn-state");
+      const turnId = TurnId.make("turn-assistant-state");
+      const createdAt = "2026-03-01T00:00:00.000Z";
+
+      yield* repository.upsert({
+        messageId: MessageId.make("message-assistant-turn-state"),
+        threadId,
+        turnId,
+        role: "assistant",
+        ...noCorrection,
+        text: "large text that the existence query must not select",
+        isStreaming: false,
+        createdAt,
+        updatedAt: createdAt,
+      });
+
+      assert.equal(
+        yield* repository.hasAssistantMessageForTurn({
+          threadId,
+          turnId,
+          streamingOnly: false,
+        }),
+        true,
+      );
+      assert.equal(
+        yield* repository.hasAssistantMessageForTurn({
+          threadId,
+          turnId,
+          streamingOnly: true,
+        }),
+        false,
+      );
+      assert.equal(
+        yield* repository.hasAssistantMessageForTurn({
+          threadId,
+          turnId: TurnId.make("turn-assistant-state-missing"),
+          streamingOnly: false,
+        }),
+        false,
+      );
     }),
   );
 });

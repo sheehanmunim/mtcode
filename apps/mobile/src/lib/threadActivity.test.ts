@@ -1,5 +1,5 @@
+import { derivePendingRequests } from "@t3tools/client-runtime/pending-requests";
 import { describe, expect, it } from "vite-plus/test";
-import { codexFeedbackMessage } from "@t3tools/client-runtime/state/threads";
 
 import {
   EventId,
@@ -16,8 +16,6 @@ import {
   agentSpawnSummary,
   buildPendingUserInputAnswers,
   buildThreadFeed,
-  derivePendingApprovals,
-  derivePendingUserInputs,
   deriveThreadFeedPresentation,
   isPendingUserInputOptionSelected,
   setPendingUserInputCustomAnswer,
@@ -27,34 +25,6 @@ import {
   type ThreadFeedEntry,
   type WorkLogEntry,
 } from "./threadActivity";
-
-describe("Codex feedback pseudo-messages", () => {
-  it("keeps pending and completed feedback messages in the mobile thread body", () => {
-    const pending = {
-      id: MessageId.make("feedback-command"),
-      command: "/feedback The agent stopped early.",
-      createdAt: "2026-08-23T00:00:00.000Z",
-      status: "uploading" as const,
-    };
-    const entries = [codexFeedbackMessage(pending), codexFeedbackMessage(pending, "assistant")].map(
-      (message) => ({
-        type: "message" as const,
-        id: message.id,
-        createdAt: message.createdAt,
-        message,
-      }),
-    );
-
-    expect(deriveThreadFeedPresentation(entries, null, new Set())).toEqual(entries);
-    expect(entries[1]?.message.text).toBe("Sending feedback to OpenAI...");
-
-    const completed = codexFeedbackMessage(
-      { ...pending, status: "sent", feedbackId: "codex-thread-1" },
-      "assistant",
-    );
-    expect(completed.text).toContain("codex-thread-1");
-  });
-});
 
 const singleSelectQuestion = {
   id: "runtime",
@@ -107,7 +77,7 @@ describe("pending user input answers", () => {
       createdAt: "2026-09-03T00:00:00.000Z",
       payload: { requestId: "async-1", responseMode: "message", questions: [question] },
     });
-    const questions = derivePendingUserInputs([requested])[0]?.questions;
+    const questions = derivePendingRequests([requested]).userInputs[0]?.questions;
     expect(questions).toEqual([question]);
     expect(buildPendingUserInputAnswers(questions!, { "0": { customAnswer: "Example" } })).toEqual({
       "0": "Example",
@@ -126,7 +96,7 @@ describe("pending user input answers", () => {
       },
     });
 
-    expect(derivePendingUserInputs([requested])).toEqual([
+    expect(derivePendingRequests([requested]).userInputs).toEqual([
       {
         requestId: "interaction_1",
         createdAt: requested.createdAt,
@@ -262,121 +232,6 @@ describe("pending user input answers", () => {
     { selectedOptionValues: ["  choice  "] },
   ])("requires an offered value for a choice-only question: %j", (draft) => {
     expect(buildPendingUserInputAnswers([nativeQuestion], { choice: draft })).toBeNull();
-  });
-});
-
-describe("pending approvals", () => {
-  it.each([{}, { requestType: "unknown" }])(
-    "exposes legacy OpenCode approvals without a known request kind: %j",
-    (legacyPayload) => {
-      const requested = makeActivity({
-        id: EventId.make("approval-legacy"),
-        kind: "approval.requested",
-        summary: "Approval requested",
-        createdAt: "2026-08-24T00:00:00.000Z",
-        payload: { requestId: "per-legacy", detail: "*", ...legacyPayload },
-      });
-
-      expect(derivePendingApprovals([requested])).toEqual([
-        {
-          requestId: "per-legacy",
-          requestKind: "command",
-          createdAt: requested.createdAt,
-          detail: "*",
-        },
-      ]);
-    },
-  );
-
-  it.each(["tool_user_input", "auth_tokens_refresh"])(
-    "does not turn %s into an approval",
-    (requestType) => {
-      const activity = makeActivity({
-        id: EventId.make("approval-non-approval"),
-        kind: "approval.requested",
-        summary: "Approval requested",
-        createdAt: "2026-08-24T00:00:00.000Z",
-        payload: { requestId: "not-an-approval", requestType },
-      });
-
-      expect(derivePendingApprovals([activity])).toEqual([]);
-    },
-  );
-
-  it.each(["approval.resolved", "provider.approval.respond.failed"])(
-    "removes legacy approvals after %s",
-    (kind) => {
-      const requested = makeActivity({
-        id: EventId.make("approval-legacy-open"),
-        kind: "approval.requested",
-        summary: "Approval requested",
-        createdAt: "2026-08-24T00:00:00.000Z",
-        payload: { requestId: "per-legacy", requestType: "unknown" },
-      });
-      const resolved = makeActivity({
-        id: EventId.make("approval-legacy-resolved"),
-        kind,
-        summary: "Approval resolved",
-        createdAt: "2026-08-24T00:00:01.000Z",
-        payload: {
-          requestId: "per-legacy",
-          detail: "Unknown pending permission request: per-legacy",
-        },
-      });
-
-      expect(derivePendingApprovals([requested, resolved])).toEqual([]);
-    },
-  );
-
-  it("keeps app access approvals and persistence choices from remote environments", () => {
-    const options = [
-      { decision: "decline", label: "Decline" },
-      { decision: "acceptAlways", label: "Always allow Safari" },
-      { decision: "accept", label: "Approve" },
-    ];
-    const activity = makeActivity({
-      id: EventId.make("approval-safari"),
-      kind: "approval.requested",
-      summary: "App access approval requested",
-      createdAt: "2026-08-24T00:00:00.000Z",
-      payload: {
-        requestId: "req-safari",
-        requestType: "mcp_elicitation_approval",
-        detail: "Allow ChatGPT to use Safari?",
-        appName: "Safari",
-        options,
-      },
-    });
-
-    expect(derivePendingApprovals([activity])).toEqual([
-      {
-        requestId: "req-safari",
-        requestKind: "mcp-elicitation",
-        createdAt: "2026-08-24T00:00:00.000Z",
-        detail: "Allow ChatGPT to use Safari?",
-        appName: "Safari",
-        options,
-      },
-    ]);
-  });
-
-  it("removes an app access approval after a remote client rejects it", () => {
-    const requested = makeActivity({
-      id: EventId.make("approval-safari-open"),
-      kind: "approval.requested",
-      summary: "App access approval requested",
-      createdAt: "2026-08-24T00:00:00.000Z",
-      payload: { requestId: "req-safari", requestKind: "mcp-elicitation" },
-    });
-    const resolved = makeActivity({
-      id: EventId.make("approval-safari-resolved"),
-      kind: "approval.resolved",
-      summary: "Approval resolved",
-      createdAt: "2026-08-24T00:00:01.000Z",
-      payload: { requestId: "req-safari", decision: "decline" },
-    });
-
-    expect(derivePendingApprovals([requested, resolved])).toEqual([]);
   });
 });
 
@@ -1040,44 +895,6 @@ describe("buildThreadFeed", () => {
       ]);
     },
   );
-
-  it("keeps older local feedback before newer messages returned by the server", () => {
-    const submission = {
-      id: MessageId.make("feedback-command-ordering"),
-      command: "/feedback The agent stopped early.",
-      createdAt: "2026-08-23T00:00:01.000Z",
-      status: "sent" as const,
-      feedbackId: "codex-thread-1",
-    };
-    const laterMessage = {
-      id: MessageId.make("later-server-message"),
-      role: "assistant" as const,
-      text: "Newer server response",
-      turnId: null,
-      createdAt: "2026-08-23T00:00:02.000Z",
-      updatedAt: "2026-08-23T00:00:02.000Z",
-      streaming: false,
-    };
-    const thread = makeThread({
-      id: ThreadId.make("thread-feedback-ordering"),
-      projectId: ProjectId.make("project-1"),
-      title: "Feedback ordering",
-      messages: [laterMessage],
-    });
-
-    const feed = buildThreadFeed(thread, {
-      localMessages: [
-        codexFeedbackMessage(submission),
-        codexFeedbackMessage(submission, "assistant"),
-      ],
-    });
-
-    expect(feed.map((entry) => entry.id)).toEqual([
-      "feedback-command-ordering",
-      "feedback-command-ordering:feedback",
-      "later-server-message",
-    ]);
-  });
 
   it("keeps historic work entries attributed to their turns", () => {
     const thread = makeThread({
