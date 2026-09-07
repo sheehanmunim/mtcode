@@ -59,7 +59,6 @@ import { SettingsEnvironmentRenameRouteScreen } from "./features/settings/Settin
 import { SettingsLegalRouteScreen } from "./features/settings/SettingsLegalRouteScreen";
 import { SettingsProjectGroupingRouteScreen } from "./features/settings/SettingsProjectGroupingRouteScreen";
 import { SettingsVoiceDictationRouteScreen } from "./features/settings/SettingsVoiceDictationRouteScreen";
-import { SettingsMtTeamsRouteScreen } from "./mtTeams/MtTeamsScreen";
 import { UsageLimitAccountScreen } from "./features/usage/UsageLimitsPooled";
 import { UsageRouteScreen } from "./features/usage/UsageRouteScreen";
 import { SettingsRouteScreen } from "./features/settings/SettingsRouteScreen";
@@ -195,13 +194,6 @@ const SettingsContentStack = createNativeStackNavigator({
       linking: "voice-dictation",
       options: {
         title: "Voice Dictation",
-      },
-    }),
-    SettingsMtTeams: createNativeStackScreen({
-      screen: SettingsMtTeamsRouteScreen,
-      linking: "mt-teams",
-      options: {
-        title: "MT Teams",
       },
     }),
     SettingsClientStorage: createNativeStackScreen({

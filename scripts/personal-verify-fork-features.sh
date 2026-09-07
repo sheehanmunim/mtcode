@@ -118,14 +118,6 @@ require apps/web/src/routes/_chat.pull-requests.tsx "PullRequestUpstreamCard" "u
 require scripts/lib/connect-public-providers.ts "T3_CONNECT_PUBLIC_PROVIDER" "T3 Connect provider baked into every client build"
 require apps/web/src/cloud/connectProviders.ts "relayCapable" "relay-capable provider preferred as default identity"
 
-# --- MT Teams (Better Auth + Convex team layer, 2026-08-25) ---
-require apps/web/src/routes/settings.mt-teams.tsx "MtTeamsSettings" "MT Teams top-level settings panel route"
-require apps/web/src/components/settings/SettingsSidebarNav.tsx "MtTeamsInviteCountBadge" "MT Teams nav entry with invite badge"
-require apps/web/src/components/Sidebar.tsx "MtTeamsSidebarSection" "Team shelf mounted in sidebar"
-require apps/server/src/ws.ts "mtTeams" "mtTeams RPCs registered in ws"
-require apps/mobile/src/features/settings/SettingsRouteScreen.tsx "MtTeams" "MT Teams entry in mobile settings"
-require apps/mobile/src/features/home/HomeScreen.tsx "MtTeamsTeamShelf" "Team shelf in mobile thread list"
-
 # --- munim new-thread env helpers (e51e0fc8e) ---
 require apps/web/src/hooks/useHandleNewThread.ts "shouldReadProjectFileForNewThreadDefaults" "new-thread project-file defaults"
 

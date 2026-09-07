@@ -27,7 +27,6 @@ T3_MT_VERSION_NEXT=1 personal_mt_export_desktop_version
 TAG="munim-v${T3CODE_DESKTOP_VERSION}"
 
 export T3CODE_DESKTOP_DISTRO=munim
-export VITE_MT_TEAMS_URL="https://reminiscent-ibis-360.convex.site"
 export T3CODE_DESKTOP_UPDATE_REPOSITORY="$RELEASE_REPO"
 export GITHUB_REPOSITORY="$RELEASE_REPO"
 

@@ -41,9 +41,9 @@ export function isT3ConnectPublishableKey(value: string | undefined): boolean {
 export function buildConnectProviders(
   _env: Readonly<Record<string, string | undefined>>,
 ): ConnectProviderPublicConfig[] {
-  // Clerk-based MT Connect is retired (2026-08-25): teams run on MT Teams
-  // (Better Auth + Convex) and machine sync runs on T3 Connect. One Connect
-  // identity means no identity switch and no "Use MT Connect" affordance.
+  // Clerk-based MT Connect is retired (2026-08-25): machine sync runs on
+  // T3 Connect. One Connect identity means no identity switch and no
+  // "Use MT Connect" affordance.
   return [T3_CONNECT_PUBLIC_PROVIDER];
 }
 

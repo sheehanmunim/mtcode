@@ -25,7 +25,6 @@ import {
   SparklesIcon,
   Mic2Icon,
   Settings2Icon,
-  UsersIcon,
   XIcon,
 } from "lucide-react";
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
@@ -40,7 +39,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -48,7 +46,6 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from "../ui/sidebar";
-import { useMtTeamsSelector, useMtTeamsSync } from "../../mtTeams/state";
 import { SidebarUtilityMenu } from "../sidebar/SidebarChrome";
 import { scrollToSettingsTarget } from "./settingsLayout";
 import {
@@ -88,7 +85,6 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/skills": SparklesIcon,
   "/settings/source-control": GitBranchIcon,
   "/settings/connections": Link2Icon,
-  "/settings/mt-teams": UsersIcon,
   "/settings/voice": Mic2Icon,
   "/settings/computer-use": MonitorIcon,
   "/settings/computer-history": HistoryIcon,
@@ -105,20 +101,6 @@ const SETTINGS_NAV_ITEMS: ReadonlyArray<{
   icon: SETTINGS_SECTION_ICONS[to],
 }));
 
-/**
- * Pending team-invitation count on the MT Teams nav entry. Piggybacks on the
- * MT Teams store poll (`useMtTeamsSync` refcounts, so this costs nothing when
- * another consumer already polls) and renders nothing while signed out or
- * without pending invites.
- */
-function MtTeamsInviteCountBadge() {
-  useMtTeamsSync();
-  const count = useMtTeamsSelector((state) =>
-    state.sessionToken.length > 0 ? (state.myInvites?.length ?? 0) : 0,
-  );
-  if (count === 0) return null;
-  return <SidebarMenuBadge>{count}</SidebarMenuBadge>;
-}
 const SETTINGS_PAGE_SECTIONS: Partial<
   Readonly<Record<SettingsPath, ReadonlyArray<{ label: string; targetId: string }>>>
 > = {
@@ -478,7 +460,6 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                         </SidebarMenuSub>
                       </SettingsSubmenuCollapse>
                     ) : null}
-                    {item.to === "/settings/mt-teams" ? <MtTeamsInviteCountBadge /> : null}
                   </SidebarMenuItem>
                 );
               })}

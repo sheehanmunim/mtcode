@@ -12,7 +12,6 @@ export type SettingsPath =
   | "/settings/skills"
   | "/settings/source-control"
   | "/settings/connections"
-  | "/settings/mt-teams"
   | "/settings/voice"
   | "/settings/computer-use"
   | "/settings/computer-history"
@@ -64,7 +63,6 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/skills": "Skills",
   "/settings/source-control": "Source Control",
   "/settings/connections": "Connections",
-  "/settings/mt-teams": "MT Teams",
   "/settings/voice": "Voice",
   "/settings/computer-use": "Computer Use",
   "/settings/computer-history": "Computer History",
@@ -565,31 +563,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "voice-dictation",
     title: "Voice dictation",
     to: "/settings/general",
-  },
-  {
-    id: "mt-teams",
-    title: "MT Teams",
-    to: "/settings/mt-teams",
-  },
-  {
-    id: "mt-teams-teams",
-    title: "Teams",
-    to: "/settings/mt-teams",
-  },
-  {
-    // The invite input lives inside each team's card in the Teams row.
-    id: "mt-teams-invite",
-    title: "Invite teammate",
-    to: "/settings/mt-teams",
-    targetId: "mt-teams-teams",
-  },
-  {
-    // The Invitations row only renders while invites are pending, so the
-    // section header is the stable scroll destination.
-    id: "mt-teams-invitations",
-    title: "Team invitations",
-    to: "/settings/mt-teams",
-    targetId: "mt-teams",
   },
   {
     id: "wsl-backend",

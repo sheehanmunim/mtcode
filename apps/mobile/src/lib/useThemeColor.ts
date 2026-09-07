@@ -6,8 +6,8 @@ import { useCSSVariable } from "uniwind";
  * in React Native style props (backgroundColor, tintColor, etc.).
  *
  * Upstream deleted this wrapper when it compiled semantic themes for Uniwind
- * (018d7f277); the fork's screens (MT Teams, voice dictation, SSH prompt)
- * still consume it, so it lives on here.
+ * (018d7f277); the fork's screens (voice dictation, SSH prompt) still
+ * consume it, so it lives on here.
  *
  * Usage: `const color = useThemeColor("--color-icon");`
  */

@@ -419,10 +419,6 @@ export const WS_METHODS = {
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
   cloudInstallRelayClient: "cloud.installRelayClient",
 
-  // MT Teams bridge methods
-  mtTeamsConfigure: "mtTeams.configure",
-  mtTeamsStatus: "mtTeams.status",
-
   // Pull request methods
   pullRequestsList: "pullRequests.list",
   pullRequestsListStats: "pullRequests.listStats",
@@ -794,44 +790,6 @@ const WsCloudInstallRelayClientRpc = Rpc.make(WS_METHODS.cloudInstallRelayClient
   success: RelayClientInstallProgressEventSchema,
   error: Schema.Union([RelayClientInstallFailedError, EnvironmentAuthorizationError]),
   stream: true,
-});
-
-export const MtTeamsConfigureInput = Schema.Struct({
-  serviceUrl: Schema.String,
-  environmentKey: Schema.String,
-});
-export type MtTeamsConfigureInput = typeof MtTeamsConfigureInput.Type;
-
-export const MtTeamsConfigureResult = Schema.Struct({
-  ok: Schema.Boolean,
-});
-export type MtTeamsConfigureResult = typeof MtTeamsConfigureResult.Type;
-
-export const MtTeamsBridgeStatus = Schema.Struct({
-  configured: Schema.Boolean,
-  serviceUrl: Schema.NullOr(Schema.String),
-  lastPublishAt: Schema.NullOr(Schema.String),
-  lastError: Schema.NullOr(Schema.String),
-});
-export type MtTeamsBridgeStatus = typeof MtTeamsBridgeStatus.Type;
-
-export class MtTeamsBridgeError extends Schema.TaggedErrorClass<MtTeamsBridgeError>()(
-  "MtTeamsBridgeError",
-  {
-    message: Schema.String,
-  },
-) {}
-
-export const WsMtTeamsConfigureRpc = Rpc.make(WS_METHODS.mtTeamsConfigure, {
-  payload: MtTeamsConfigureInput,
-  success: MtTeamsConfigureResult,
-  error: Schema.Union([MtTeamsBridgeError, EnvironmentAuthorizationError]),
-});
-
-export const WsMtTeamsStatusRpc = Rpc.make(WS_METHODS.mtTeamsStatus, {
-  payload: Schema.Struct({}),
-  success: MtTeamsBridgeStatus,
-  error: EnvironmentAuthorizationError,
 });
 
 const WsServerReportClientActivityRpc = Rpc.make(WS_METHODS.serverReportClientActivity, {
@@ -1610,8 +1568,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsVoiceExtractWebRpc,
   WsCloudGetRelayClientStatusRpc,
   WsCloudInstallRelayClientRpc,
-  WsMtTeamsConfigureRpc,
-  WsMtTeamsStatusRpc,
   WsPullRequestsListRpc,
   WsPullRequestsListStatsRpc,
   WsPullRequestsRankRpc,

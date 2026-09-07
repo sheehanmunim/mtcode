@@ -60,7 +60,6 @@ import {
   type ThreadListV2ListItem,
 } from "../threads/threadListV2";
 import { useThreadListV2ShelfPreferences } from "../threads/use-thread-list-v2-shelf-preferences";
-import { MtTeamsTeamShelf } from "../../mtTeams/MtTeamsTeamShelf";
 import type { HomeListFilterMenuEnvironment } from "./home-list-filter-menu";
 import {
   buildHomeListLayout,
@@ -1171,7 +1170,6 @@ export function HomeScreen(props: HomeScreenProps) {
                     </Text>
                   </Pressable>
                 ) : null}
-                <MtTeamsTeamShelf />
               </>
             }
             ListEmptyComponent={v2ListEmpty}
@@ -1214,7 +1212,6 @@ export function HomeScreen(props: HomeScreenProps) {
           estimatedItemSize={ESTIMATED_THREAD_ROW_HEIGHT}
           extraData={extraData}
           ListHeaderComponent={listHeader}
-          ListFooterComponent={<MtTeamsTeamShelf />}
           ListEmptyComponent={listEmpty}
           style={{ flex: 1 }}
           automaticallyAdjustsScrollIndicatorInsets={NATIVE_LIQUID_GLASS_SUPPORTED}

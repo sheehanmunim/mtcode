@@ -58,7 +58,6 @@ import {
   runAppUpdateCheck,
 } from "../updates/app-updates";
 import { useSavedRemoteConnections } from "../../state/use-remote-environment-registry";
-import { MtTeamsSettingsRow } from "../../mtTeams/MtTeamsSettingsRow";
 import { SettingsRow } from "./components/SettingsRow";
 import { SettingsSection } from "./components/SettingsSection";
 import { SettingsSwitchRow } from "./components/SettingsSwitchRow";
@@ -567,7 +566,6 @@ function GeneralSettingsSection() {
         }
         target="SettingsVoiceDictation"
       />
-      <MtTeamsSettingsRow />
       <AutoSettleSettingsRows />
       <SettingsSwitchRow
         icon="arrow.up.right.circle"

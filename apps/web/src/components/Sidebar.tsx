@@ -196,7 +196,6 @@ import {
   type SnoozePreset,
 } from "./Sidebar.snooze";
 import { GoalActiveMarker } from "./chat/GoalChip";
-import { MtTeamsSidebarSection } from "~/mtTeams/MtTeamsSidebarSection";
 import { ProjectFavicon } from "./ProjectFavicon";
 import { ProviderInstanceIcon } from "./chat/ProviderInstanceIcon";
 import { getTriggerDisplayModelLabel } from "./chat/providerIconUtils";
@@ -4949,7 +4948,6 @@ export default function Sidebar() {
               )}
             </div>
           ) : null}
-          <MtTeamsSidebarSection />
         </SidebarGroup>
       </SidebarContent>
       <SidebarChromeFooter />
