@@ -3134,7 +3134,7 @@ function buildToolCallExpandedBody(
   viewedImagePath: string | null,
 ): string | null {
   const blocks: string[] = [];
-  const seen = new Set<string>();
+  const seen = new Set<string>([visibleLabel.trim()]);
   const addBlock = (value: string | null | undefined) => {
     const text = value?.trim();
     if (!text || seen.has(text)) return;
@@ -3356,6 +3356,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
       : null;
   const commandMatchesVisibleLabel = workEntry.command?.trim() === previewText.trim();
   const canExpand =
+    (showFailedIndicator && previewText.trim().length > 0) ||
     (workEntry.itemType === "mcp_tool_call" && workEntry.toolData !== undefined) ||
     Boolean(
       (!commandMatchesVisibleLabel &&

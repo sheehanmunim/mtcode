@@ -811,12 +811,7 @@ export function ProviderInstanceCard({
 
   return (
     <>
-      <SettingsSection
-        title={displayName}
-        description={editorStatusNode}
-        icon={titleIconNode}
-        headerAction={editorHeaderAction}
-      >
+      <SettingsSection title={displayName} icon={titleIconNode} headerAction={editorHeaderAction}>
         {liveProvider?.accountLogin ? (
           <SettingsRow
             title="Account"
@@ -840,6 +835,9 @@ export function ProviderInstanceCard({
         ) : null}
         <SettingsRow
           title="Display name"
+          status={
+            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5">{editorStatusNode}</div>
+          }
           control={
             <div
               inert={readOnly}

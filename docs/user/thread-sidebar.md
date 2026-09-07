@@ -33,11 +33,14 @@ thread into the active list un-settles it. A snoozed thread can be dragged out o
 shelf, which wakes it, but threads cannot be dragged into the shelf because snoozing needs a wake
 time. Dragging a pinned thread out of the pinned section does not ask for unpin confirmation.
 Pinned and active boundary labels appear only while dragging, without moving the rows. The
-destination boundary highlights. When you cross into another section, the dragged thread shows
-its destination, such as **→ Active**. Its usual pin, status, and hover actions hide during the
-drag. Reordering within the same section does not show a destination badge. When there are no
-pins, drag to the top edge to pin a thread. Section labels also identify empty sections and a
-collapsed settled shelf.
+other rows slide aside to show where the thread will land. When you cross into another section,
+the dragged thread shows the action the drop performs, with its icon: **Pin**, **Unpin**,
+**Settle**, **Un-settle**, or **Wake**. Its status and hover actions hide during the drag. A pinned
+thread keeps its pin only while it stays in the pinned section; once it leaves, the badge takes
+over. Reordering within the same section shows no badge. When there are no pins, drag to the top
+edge to pin a thread. Section labels stay readable for the whole drag, and the section the
+thread is over takes the accent color. Section labels also
+identify empty sections and a collapsed settled shelf.
 
 Drag within the pinned or active section to change its order. Other rows slide aside to show the
 spot where the thread will land. Drops into either section keep the position you choose. On
@@ -63,6 +66,8 @@ their default order until the server is updated.
 Choose **Settle thread** from its menu to move finished work out of the active list
 without deleting the conversation. **Un-settle thread** restores it to active work
 and prevents automatic settlement until new activity resumes the usual rules.
+Manually settling an idle thread dismisses unanswered async questions without
+sending an answer or restarting the agent.
 
 By default, environments settle inactive threads after three days and settle
 threads whose pull request merged. A closed pull request can also settle an idle

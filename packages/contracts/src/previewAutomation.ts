@@ -546,6 +546,10 @@ export const PreviewAutomationSnapshotInput = Schema.Struct({
     description:
       "Optional extra snapshot slices. Default is screenshot, visible text, and interactive elements. Pass ax, console, and/or network when you need those heavier diagnostics.",
   }),
+  includeImage: Schema.optional(Schema.Boolean).annotate({
+    description:
+      "Include the PNG image in the tool response. Defaults to true. Set false for text-only output.",
+  }),
 }).annotate({
   description:
     "Inspects the collaborative browser tab. Omit include for a slim snapshot; add ax, console, or network only when needed.",
