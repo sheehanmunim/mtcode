@@ -36,8 +36,10 @@ import {
   readActiveBrowserRecordingTargets,
   startBrowserRecording,
   stopBrowserRecording,
+  stopBrowserRecordingForUpload,
 } from "~/browser/browserRecording";
 import { resolveBrowserRecordingStopTarget } from "~/browser/browserRecordingScope";
+import { uploadBrowserRecording } from "~/browser/browserRecordingUpload";
 import {
   acquireBrowserSurfaceActivity,
   useBrowserSurfaceStore,
@@ -747,7 +749,18 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
             const stopRuntimeTabId =
               activeRecordings.find((recording) => recording.serverTabId === stopTabId)
                 ?.runtimeTabId ?? null;
-            const artifact = stopRuntimeTabId ? await stopBrowserRecording(stopRuntimeTabId) : null;
+            const transferToEnvironment =
+              typeof request.input === "object" &&
+              request.input !== null &&
+              "transferToEnvironment" in request.input &&
+              request.input.transferToEnvironment === true;
+            const artifact = stopRuntimeTabId
+              ? transferToEnvironment
+                ? await stopBrowserRecordingForUpload(stopRuntimeTabId, (saved, blob) =>
+                    uploadBrowserRecording(threadRef, saved, blob, hostDeadlineMs),
+                  )
+                : await stopBrowserRecording(stopRuntimeTabId)
+              : null;
             if (!artifact || !stopTabId) {
               return raisePreviewAutomationHostError(
                 new PreviewAutomationRecordingNotActiveError({
@@ -758,7 +771,10 @@ function PreviewAutomationHost(props: { readonly environmentId: EnvironmentId })
                 }),
               );
             }
-            return { ...artifact, tabId: stopTabId };
+            return {
+              ...artifact,
+              tabId: stopTabId,
+            };
           }
         }
       } catch (cause) {

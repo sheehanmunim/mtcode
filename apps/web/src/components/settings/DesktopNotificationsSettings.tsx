@@ -17,7 +17,6 @@ import { SettingsRow, SettingsSection } from "./settingsLayout.tsx";
 import { searchableSetting } from "./settingsSearch.ts";
 import { APP_DISPLAY_NAME } from "~/branding";
 
-
 const EVENT_OPTIONS: ReadonlyArray<{
   readonly event: DesktopNotificationEvent;
   readonly title: string;

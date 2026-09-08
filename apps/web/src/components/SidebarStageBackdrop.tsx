@@ -25,7 +25,11 @@ export const DEV_BACKDROP: SidebarStageBackdropVariant = { kind: "dev" };
 export function resolveSidebarArtwork(input: {
   readonly selection: string;
   readonly stageLabel: string;
-  readonly custom: ReadonlyArray<{ readonly id: string; readonly name: string; readonly image: string }>;
+  readonly custom: ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+    readonly image: string;
+  }>;
   readonly enabled?: boolean;
 }): SidebarStageBackdropVariant | null {
   if (input.enabled === false) return null;

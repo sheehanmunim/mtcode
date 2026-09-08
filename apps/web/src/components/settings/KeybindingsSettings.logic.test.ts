@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { ResolvedKeybindingsConfig } from "@t3tools/contracts";
+import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 
 import {
   buildKeybindingRows,
@@ -94,6 +95,42 @@ describe("KeybindingsSettings.logic", () => {
     ).toBe("alt+.");
   });
 
+  it.each([
+    ["@", "Digit2", "mod+shift+2"],
+    ['"', "Digit2", "mod+shift+2"],
+    ["@", "Quote", "mod+shift+'"],
+  ])("captures %s at %s by physical key", (key, code, expected) => {
+    expect(
+      keybindingFromKeyboardEvent(
+        {
+          key,
+          code,
+          metaKey: true,
+          ctrlKey: false,
+          altKey: false,
+          shiftKey: true,
+        },
+        "MacIntel",
+      ),
+    ).toBe(expected);
+  });
+
+  it("captures Latin layout keys instead of their punctuation position", () => {
+    expect(
+      keybindingFromKeyboardEvent(
+        {
+          key: "m",
+          code: "Semicolon",
+          metaKey: true,
+          ctrlKey: false,
+          altKey: false,
+          shiftKey: false,
+        },
+        "MacIntel",
+      ),
+    ).toBe("mod+m");
+  });
+
   it("serializes shortcuts and when expressions for upserts", () => {
     expect(
       shortcutToKeybindingInput({
@@ -178,7 +215,7 @@ describe("KeybindingsSettings.logic", () => {
     expect(options).not.toContain("customModeActive");
   });
 
-  it("builds command options from built-in commands and resolved project bindings", () => {
+  it("builds command options from all static commands and resolved project bindings", () => {
     const options = buildKeybindingCommandOptions([
       {
         command: "script.setup-db.run",
@@ -194,7 +231,15 @@ describe("KeybindingsSettings.logic", () => {
     ] satisfies ResolvedKeybindingsConfig);
 
     expect(options).toEqual(
-      expect.arrayContaining(["chat.new", "rightPanel.toggleMaximized", "script.setup-db.run"]),
+      expect.arrayContaining([
+        "chat.new",
+        "rightPanel.toggleMaximized",
+        "thread.stop",
+        "script.setup-db.run",
+      ]),
+    );
+    expect(DEFAULT_RESOLVED_KEYBINDINGS.some((binding) => binding.command === "thread.stop")).toBe(
+      false,
     );
   });
 

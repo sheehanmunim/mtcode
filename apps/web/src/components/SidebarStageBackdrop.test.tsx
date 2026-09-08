@@ -122,9 +122,9 @@ describe("named artwork defaults", () => {
   });
 
   it("keeps the legacy auto value working for older settings files", () => {
-    expect(
-      resolveSidebarArtwork({ selection: "auto", stageLabel: "Dev", custom: [] }),
-    ).toEqual(DEV_BACKDROP);
+    expect(resolveSidebarArtwork({ selection: "auto", stageLabel: "Dev", custom: [] })).toEqual(
+      DEV_BACKDROP,
+    );
   });
 });
 

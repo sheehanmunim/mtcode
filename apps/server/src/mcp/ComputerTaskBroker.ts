@@ -295,8 +295,7 @@ export const make = Effect.gen(function* ComputerTaskBrokerMake() {
       if (!route) {
         return yield* new ComputerTaskError({
           code: "no_client",
-          detail:
-            `No ${resolveAppDisplayName()} client is connected that can reach another computer. Keep the desktop or web app open.`,
+          detail: `No ${resolveAppDisplayName()} client is connected that can reach another computer. Keep the desktop or web app open.`,
         });
       }
       const offered = yield* Queue.offer(route.client.queue, {

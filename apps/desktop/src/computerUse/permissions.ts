@@ -277,7 +277,11 @@ function permissionStatusFor(
 /** The bundle TCC records grants against; falls back to the shipped id. */
 function bundleIdentifier(): string {
   try {
-    return Electron.app.getName() === "" ? "com.munim.mtcode" : (Electron.app as unknown as { getBundleIdentifier?: () => string }).getBundleIdentifier?.() ?? "com.munim.mtcode";
+    return Electron.app.getName() === ""
+      ? "com.munim.mtcode"
+      : ((
+          Electron.app as unknown as { getBundleIdentifier?: () => string }
+        ).getBundleIdentifier?.() ?? "com.munim.mtcode");
   } catch {
     return "com.munim.mtcode";
   }

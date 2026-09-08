@@ -13,6 +13,7 @@
 - [Keyboard shortcuts](./user/keybindings.md)
 - [Messaging between threads](./user/thread-messaging.md)
 - [Voice dictation](./user/voice-dictation.md)
+- [SnapShots](./user/snap-shot.md)
 - [Import browser sessions](./user/browser-import.md)
 - [Usage and limits](./user/usage.md)
 - [Product usage data](./user/telemetry.md)

@@ -1,3 +1,4 @@
+import { QuestionAnswerHistory } from "./QuestionAnswerHistory";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { type AppSymbolName, SymbolView } from "../../components/AppSymbol";
@@ -139,6 +140,7 @@ export function ThreadDisclosureChevron(props: {
 }
 
 function ShimmerWorkContent(props: {
+  readonly textClassName?: string;
   readonly compact?: boolean;
   readonly environmentId?: EnvironmentId;
   readonly highlighted: boolean;
@@ -176,6 +178,7 @@ function ShimmerWorkContent(props: {
           "min-w-0 shrink",
           props.compact ? "text-xs" : "text-sm",
           props.highlighted ? "text-foreground" : "text-foreground-muted",
+          props.textClassName,
         )}
         numberOfLines={1}
         onTextLayout={props.onTextLayout}
@@ -187,6 +190,8 @@ function ShimmerWorkContent(props: {
 }
 
 export function ShimmeringWorkContent(props: {
+  readonly className?: string;
+  readonly textClassName?: string;
   /** Secondary line: no icon slot, caption size. */
   readonly compact?: boolean;
   readonly environmentId?: EnvironmentId;
@@ -259,10 +264,11 @@ export function ShimmeringWorkContent(props: {
 
   return (
     <View
-      className="min-w-0 flex-1 overflow-hidden"
+      className={cn("min-w-0 flex-1 overflow-hidden", props.className)}
       onLayout={(event) => setAvailableWidth(event.nativeEvent.layout.width)}
     >
       <ShimmerWorkContent
+        textClassName={props.textClassName}
         compact={props.compact}
         environmentId={props.environmentId}
         highlighted={false}
@@ -304,6 +310,7 @@ export function ShimmeringWorkContent(props: {
           >
             <Animated.View style={[{ width: availableWidth }, counterSweepStyle]}>
               <ShimmerWorkContent
+                textClassName={props.textClassName}
                 compact={props.compact}
                 environmentId={props.environmentId}
                 highlighted
@@ -843,13 +850,19 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
         </View>
       </Pressable>
 
-      {expanded && (fullDetail || viewedImagePath) ? (
+      {expanded && (fullDetail || viewedImagePath || row.workEntry.questionAnswer) ? (
         <Animated.View
           entering={WORK_LOG_DETAIL_ENTER_TRANSITION}
           exiting={WORK_LOG_DETAIL_EXIT_TRANSITION}
           layout={WORK_LOG_LAYOUT_TRANSITION}
           className="ml-7 border-l border-adaptive-neutral-300-a60-white-a12 pb-1 pl-3 pt-0.5"
         >
+          {row.workEntry.questionAnswer ? (
+            <QuestionAnswerHistory
+              environmentId={props.environmentId}
+              answer={row.workEntry.questionAnswer}
+            />
+          ) : null}
           {viewedImagePath ? (
             <View className="pb-1.5">
               {props.renderImage({ href: viewedImagePath, alt: null, title: null })}

@@ -103,19 +103,28 @@ function resolveDesktopAppStageLabel(input: {
   return isNightlyDesktopVersion(input.appVersion) ? "Nightly" : "Alpha";
 }
 
-function resolveDesktopAppBranding(input: {
+export function resolveDesktopAppBranding(input: {
   readonly isDevelopment: boolean;
   readonly appVersion: string;
-  readonly baseName: string;
-  readonly singleReleaseChannel: boolean;
+  // Optional so early pre-ready call sites without distro context (see
+  // DesktopPreReadyPlatform) keep working; full environment construction
+  // always passes both explicitly.
+  readonly baseName?: string;
+  readonly singleReleaseChannel?: boolean;
 }): DesktopAppBranding {
-  const stageLabel = resolveDesktopAppStageLabel(input);
+  const baseName = input.baseName ?? "T3 Code";
+  const singleReleaseChannel = input.singleReleaseChannel ?? false;
+  const stageLabel = resolveDesktopAppStageLabel({
+    isDevelopment: input.isDevelopment,
+    appVersion: input.appVersion,
+    singleReleaseChannel,
+  });
   return {
-    baseName: input.baseName,
+    baseName,
     stageLabel,
     // Munim / personal fork: show the product name in the shell with no
     // Alpha/Nightly suffix. MT Code is a single release, not a channel.
-    displayName: input.baseName,
+    displayName: baseName,
   };
 }
 

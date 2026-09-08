@@ -89,7 +89,7 @@ export function mightCarryUsage(line: string, provider: TranscriptProviderKind):
  */
 export const GROK_COST_USD_TICKS_PER_DOLLAR = 10_000_000_000;
 
-export function grokCostTicksToUsd(ticks: unknown): number | null {
+function grokCostTicksToUsd(ticks: unknown): number | null {
   if (typeof ticks !== "number" || !Number.isFinite(ticks) || ticks < 0) return null;
   return ticks / GROK_COST_USD_TICKS_PER_DOLLAR;
 }

@@ -11,6 +11,7 @@ import {
   type PullRequestCommit,
   type PullRequestDetailView,
   type PullRequestMergeability,
+  type PullRequestMergeMethod,
   type PullRequestReaction,
   type PullRequestReviewThread,
   type PullRequestStackStep,
@@ -91,6 +92,24 @@ export function buildPullRequestStackHandoffContext(
     ].join("\n"),
     diff: "",
   };
+}
+
+export const PULL_REQUEST_MERGE_METHOD_LABELS: Record<PullRequestMergeMethod, string> = {
+  merge: "Merge",
+  squash: "Squash and merge",
+  rebase: "Rebase and merge",
+};
+
+export function resolvePullRequestMergeMethod(
+  allowed: ReadonlyArray<PullRequestMergeMethod>,
+  current: PullRequestMergeMethod | null,
+  projectDefault: PullRequestMergeMethod | undefined,
+  lastSelected: PullRequestMergeMethod,
+): PullRequestMergeMethod {
+  for (const method of [current, projectDefault, lastSelected]) {
+    if (method && allowed.includes(method)) return method;
+  }
+  return allowed[0] ?? "merge";
 }
 
 const safeShellArgument = /^[A-Za-z0-9._/@+=,-]+$/;

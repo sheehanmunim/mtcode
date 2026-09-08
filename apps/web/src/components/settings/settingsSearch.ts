@@ -7,6 +7,7 @@ export type SettingsPath =
   | "/settings/appearance"
   | "/settings/keybindings"
   | "/settings/plugins"
+  | "/settings/snap-shot"
   | "/settings/providers"
   | "/settings/integrations"
   | "/settings/skills"
@@ -58,6 +59,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/projects": "Projects",
   "/settings/keybindings": "Keybindings",
   "/settings/plugins": "Plugins",
+  "/settings/snap-shot": "SnapShots",
   "/settings/providers": "Providers",
   "/settings/integrations": "Integrations",
   "/settings/skills": "Skills",
@@ -371,6 +373,45 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "plugin-marketplace",
     title: "Plugin marketplace",
     to: "/settings/plugins",
+  },
+  {
+    id: "snap-shot-enabled",
+    title: "SnapShots",
+    searchTerms: ["window capture screenshot"],
+    to: "/settings/snap-shot",
+  },
+  {
+    id: "snap-shot-accessibility",
+    title: "Include app text",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
+    searchTerms: [
+      "capture accessibility data text UI structure elements privacy omit agent context",
+    ],
+  },
+  {
+    id: "snap-shot-shortcut",
+    title: "Capture shortcut",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
+  },
+  {
+    id: "snap-shot-sound",
+    title: "Capture sound",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
+  },
+  {
+    id: "snap-shot-flash",
+    title: "Capture flash",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
+  },
+  {
+    id: "snap-shot-animations",
+    title: "Capture animations",
+    to: "/settings/snap-shot",
+    targetId: "snap-shot-enabled",
   },
   {
     id: "providers",

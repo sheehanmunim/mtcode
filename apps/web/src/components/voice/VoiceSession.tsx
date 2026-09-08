@@ -135,8 +135,7 @@ const VOICE_TOOLS = [
   {
     type: "function",
     name: "get_previous_messages",
-    description:
-      `Read an older page of messages from the ${APP_DISPLAY_NAME} task where this voice session started. Use beforeMessageId to continue paging backward.`,
+    description: `Read an older page of messages from the ${APP_DISPLAY_NAME} task where this voice session started. Use beforeMessageId to continue paging backward.`,
     parameters: {
       type: "object",
       additionalProperties: false,

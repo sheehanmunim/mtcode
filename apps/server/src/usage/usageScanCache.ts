@@ -24,7 +24,7 @@ import type { CodexScanState, TranscriptProviderKind, UsageRecord } from "./usag
 // entries would keep serving double-counted records forever.
 // v3: entries carry the parse position and reducer state so a grown file
 // re-parses only its appended bytes instead of starting over.
-export const USAGE_SCAN_CACHE_VERSION = 3 as const;
+const USAGE_SCAN_CACHE_VERSION = 3 as const;
 
 export interface CachedFile {
   readonly size: number;

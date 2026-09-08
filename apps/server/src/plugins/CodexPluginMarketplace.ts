@@ -1559,13 +1559,11 @@ export const makeWithOptions = (options: PluginMarketplaceOptions = {}) =>
         : null;
       const manifest = manifestPath
         ? yield* readJsonFile(manifestPath, PluginManifest).pipe(
-            Effect.orElseSucceed(
-              (): PluginManifest => ({
-                name: record.name,
-                version: record.version,
-                description: record.fallbackDescription,
-              }),
-            ),
+            Effect.orElseSucceed((): PluginManifest => ({
+              name: record.name,
+              version: record.version,
+              description: record.fallbackDescription,
+            })),
           )
         : ({
             name: record.name,
@@ -1991,14 +1989,12 @@ export const makeWithOptions = (options: PluginMarketplaceOptions = {}) =>
                 ? yield* fileSystem.exists(cachePath).pipe(Effect.orElseSucceed(() => false))
                 : false;
               const category = normalizeCategory(plugin.curatedCategoryKeys?.[0]);
-              const skills = (plugin.skills ?? []).map(
-                (skill): PluginMarketplaceSkill => ({
-                  id: skill.name,
-                  name: displayNameFromId(skill.name),
-                  description: cleanText(skill.description, "Cursor skill"),
-                  invocation: skill.name,
-                }),
-              );
+              const skills = (plugin.skills ?? []).map((skill): PluginMarketplaceSkill => ({
+                id: skill.name,
+                name: displayNameFromId(skill.name),
+                description: cleanText(skill.description, "Cursor skill"),
+                invocation: skill.name,
+              }));
               const mcpServers = (plugin.mcpServers ?? []).map(
                 (server): PluginMarketplaceMcpServer => ({
                   id: server.name,
@@ -2406,13 +2402,11 @@ export const makeWithOptions = (options: PluginMarketplaceOptions = {}) =>
                     ? true
                     : server.transport === "http" && server.url !== null,
                 )
-                .map(
-                  (server): McpAuthCandidate => ({
-                    target,
-                    packageName: detail.packageName,
-                    server,
-                  }),
-                );
+                .map((server): McpAuthCandidate => ({
+                  target,
+                  packageName: detail.packageName,
+                  server,
+                }));
             }),
           { concurrency: 3 },
         );

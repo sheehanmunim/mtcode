@@ -168,7 +168,9 @@ function VoiceSettingsContent({ environmentId }: { readonly environmentId: Envir
     if (result._tag === "Success") {
       setParallelConfigured(true);
       setParallelApiKey("");
-      setParallelFeedback(`Parallel API key saved securely on this ${APP_DISPLAY_NAME} environment.`);
+      setParallelFeedback(
+        `Parallel API key saved securely on this ${APP_DISPLAY_NAME} environment.`,
+      );
     } else {
       setParallelFeedback(messageFromError(squashAtomCommandFailure(result)));
     }

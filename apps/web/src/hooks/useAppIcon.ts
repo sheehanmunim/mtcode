@@ -21,8 +21,6 @@ export function useAppIcon(): void {
     const setIcon = window.desktopBridge?.setAppIcon;
     if (setIcon === undefined) return;
     const own = custom.find((icon) => icon.id === selection);
-    void setIcon(own ? { id: own.id, image: own.image } : { id: selection }).catch(
-      () => undefined,
-    );
+    void setIcon(own ? { id: own.id, image: own.image } : { id: selection }).catch(() => undefined);
   }, [custom, selection]);
 }

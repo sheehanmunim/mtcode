@@ -176,7 +176,7 @@ function enqueueClientSettingsPersistence<A>(work: () => Promise<A>): Promise<A>
 export function persistClientSettingsPatch(
   patch: ClientSettingsPatch,
   persist: (settings: ClientSettings) => Promise<void> = defaultClientSettingsPersistence,
-): void {
+): Promise<void> {
   // Patches queued before hydration must publish before newer optimistic patches.
   const deferPatch =
     clientSettingsHydrationStatus !== "ready" || deferredClientSettingsPatchCount > 0;
@@ -185,7 +185,7 @@ export function persistClientSettingsPatch(
   } else {
     replaceClientSettingsSnapshot({ ...getClientSettingsSnapshot(), ...patch });
   }
-  void enqueueClientSettingsPersistence(async () => {
+  return enqueueClientSettingsPersistence(async () => {
     if (deferPatch) {
       try {
         if (clientSettingsHydrationStatus !== "ready") {
@@ -458,6 +458,9 @@ function useUpdateSettingsTarget(environmentId: EnvironmentId | null) {
           }
         }
         if (Object.keys(sharedPatch).length > 0) {
+          const sourceSettings = environments.find(
+            (target) => target.environmentId === environmentId,
+          )?.serverConfig?.settings;
           const targets = new Set(
             environments.filter(supportsSharedSettingsSync).map((target) => target.environmentId),
           );
@@ -470,6 +473,9 @@ function useUpdateSettingsTarget(environmentId: EnvironmentId | null) {
             const targetPatch = filterSharedServerPatch(
               sharedPatch,
               target?.serverConfig?.environment.capabilities,
+              target?.serverConfig?.settings,
+              sourceSettings,
+              targetId === environmentId,
             );
             if (Object.keys(targetPatch).length === 0) continue;
             wroteToTarget = true;
@@ -486,7 +492,7 @@ function useUpdateSettingsTarget(environmentId: EnvironmentId | null) {
         }
       }
       if (Object.keys(clientPatch).length > 0) {
-        persistClientSettingsPatch(clientPatch);
+        void persistClientSettingsPatch(clientPatch);
       }
     },
     [environmentId, environments, persistServerSettings],
@@ -548,7 +554,12 @@ export function useSharedSettingsSync() {
       void persistServerSettings({
         environmentId: mismatch.environmentId,
         input: {
-          patch: filterSharedServerPatch(patch, target?.serverConfig?.environment.capabilities),
+          patch: filterSharedServerPatch(
+            patch,
+            target?.serverConfig?.environment.capabilities,
+            target?.serverConfig?.settings,
+            primarySettings,
+          ),
         },
       });
     }
@@ -572,10 +583,9 @@ export function useUpdateClientSettings() {
     // snapshot instead of clobbering it.
     (update: ClientSettingsPatch | ((current: ClientSettings) => ClientSettingsPatch)) => {
       if (typeof update === "function") {
-        void persistClientSettingsUpdate((current) => ({ ...current, ...update(current) }));
-      } else {
-        persistClientSettingsPatch(update);
+        return persistClientSettingsUpdate((current) => ({ ...current, ...update(current) }));
       }
+      return persistClientSettingsPatch(update);
     },
     [],
   );

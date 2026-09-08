@@ -1,3 +1,4 @@
+import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
 import { useAtomValue } from "@effect/atom-react";
 import type {
   EnvironmentId,
@@ -121,6 +122,8 @@ export interface ThreadComposerProps {
   readonly queueCount: number;
   readonly environmentId: EnvironmentId;
   readonly projectCwd: string | null;
+  /** Why sending is blocked right now (shown as the send button's label), or null. */
+  readonly sendBlockedReason?: string | null;
   readonly editorRef?: RefObject<ComposerEditorHandle | null>;
   readonly onChangeDraftMessage: (value: string) => void;
   readonly onPickDraftMedia: () => Promise<void>;
@@ -169,6 +172,7 @@ export function ComposerSurface(props: {
   /** Morphs between the compact and expanded composer layouts. */
   readonly animateLayout?: boolean;
 }) {
+  const { materialYouStyleLayoutActive } = useAppearancePreferences();
   const targetBorderRadius =
     typeof props.style.borderRadius === "number" ? props.style.borderRadius : 0;
   const animatedBorderRadius = useSharedValue(targetBorderRadius);
@@ -190,7 +194,11 @@ export function ComposerSurface(props: {
   // clip leaves the glass and content at their final height on the first frame.
   return (
     <Animated.View
-      className="shadow-[0_6px_28px] shadow-adaptive-black-a15-a35"
+      className={
+        materialYouStyleLayoutActive
+          ? undefined
+          : "shadow-[0_6px_28px] shadow-adaptive-black-a15-a35"
+      }
       layout={layoutTransition}
       style={[
         animatedShapeStyle,
@@ -203,7 +211,11 @@ export function ComposerSurface(props: {
     >
       <AnimatedGlassSurface
         chrome="none"
-        fallbackClassName="border border-border bg-card-translucent"
+        fallbackClassName={
+          materialYouStyleLayoutActive
+            ? "border border-composer-border bg-composer-surface"
+            : "border border-border bg-card-translucent"
+        }
         glassEffectStyle="regular"
         // The composer is a passive material containing interactive controls.
         // Keep native glass out of the interactive content's layout path.
@@ -226,6 +238,9 @@ export function ComposerSurface(props: {
 }
 
 export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposerProps) {
+  const { materialYouStyleLayoutActive, themeVariables: materialTheme } =
+    useAppearancePreferences();
+  const composerPanel = materialTheme["--color-composer-panel"];
   const navigation = useNavigation();
   const foregroundColor = useUniwindTheme()["--color-foreground"];
   const bodyText = useScaledTextRole("body");
@@ -345,11 +360,9 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
     serverConfig: props.serverConfig,
     states: uploadStates,
   });
+  const sendBlockedReason = props.sendBlockedReason ?? attachmentBlockReason;
   const canSend =
-    hasContent &&
-    !voiceInput.blocksSubmission &&
-    attachmentBlockReason === null &&
-    !modelUnavailable;
+    hasContent && !voiceInput.blocksSubmission && sendBlockedReason === null && !modelUnavailable;
 
   // Keep the feed inset aligned with the card or compact dictation strip.
   useEffect(() => {
@@ -544,13 +557,18 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
       style={{
         paddingTop: isExpanded ? 8 : 6,
         paddingBottom: (props.bottomInset ?? 0) + (isExpanded ? 8 : 6),
+        backgroundColor: materialYouStyleLayoutActive ? composerPanel : undefined,
       }}
     >
       {/* The backdrop gradient lives on a plain View: Reanimated's Animated.View
           silently drops experimental_backgroundImage on Android, which left this
           strip fully transparent and the feed text legible through the composer. */}
       <View
-        className="absolute inset-0 bg-linear-to-b from-screen/0 via-screen/60 to-screen/90"
+        className={
+          materialYouStyleLayoutActive
+            ? "hidden"
+            : "absolute inset-0 bg-linear-to-b from-screen/0 via-screen/60 to-screen/90"
+        }
         pointerEvents="none"
       />
       <Animated.View
@@ -702,7 +720,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                   />
                 ) : (
                   <ComposerActionButton
-                    accessibilityLabel={attachmentBlockReason ?? sendLabel}
+                    accessibilityLabel={sendBlockedReason ?? sendLabel}
                     icon="arrow.up"
                     variant="primary"
                     disabled={!canSend}
@@ -793,7 +811,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                     />
                   ) : voicePresentation.showsSend ? (
                     <ComposerActionButton
-                      accessibilityLabel={attachmentBlockReason ?? sendLabel}
+                      accessibilityLabel={sendBlockedReason ?? sendLabel}
                       icon="arrow.up"
                       variant="primary"
                       disabled={!canSend}

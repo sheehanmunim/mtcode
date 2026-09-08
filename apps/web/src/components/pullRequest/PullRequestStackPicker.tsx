@@ -89,17 +89,15 @@ function buildRemotePickerModel(
 ) {
   const currentPosition =
     stack.steps.find((step) => step.pullRequestNumber === pullRequestNumber)?.position ?? null;
-  const steps = stack.steps.map(
-    (step): PickerStep => ({
-      position: step.position,
-      branch: step.branch,
-      pullRequestNumber: step.pullRequestNumber,
-      state: step.state,
-      current: step.pullRequestNumber === pullRequestNumber,
-      needsRebase: false,
-      detail: stackStepDetail(step.pullRequestNumber, step.state, repository, false),
-    }),
-  );
+  const steps = stack.steps.map((step): PickerStep => ({
+    position: step.position,
+    branch: step.branch,
+    pullRequestNumber: step.pullRequestNumber,
+    state: step.state,
+    current: step.pullRequestNumber === pullRequestNumber,
+    needsRebase: false,
+    detail: stackStepDetail(step.pullRequestNumber, step.state, repository, false),
+  }));
   return { baseBranch: stack.baseBranch, currentPosition, steps };
 }
 

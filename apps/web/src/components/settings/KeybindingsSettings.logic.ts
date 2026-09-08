@@ -11,6 +11,7 @@ import {
   parseKeybindingWhenExpression,
 } from "@t3tools/shared/keybindings";
 
+import { shortcutKeyFromEvent } from "../../keybindings";
 import { isMacPlatform } from "../../lib/utils";
 
 export type KeybindingSource = "Default" | "Custom" | "Project";
@@ -325,15 +326,7 @@ export function keybindingFromKeyboardEvent(
   event: Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
   platform: string,
 ): string | null {
-  const portableOptionKey =
-    isMacPlatform(platform) && event.altKey
-      ? event.code === "Comma"
-        ? ","
-        : event.code === "Period"
-          ? "."
-          : event.key
-      : event.key;
-  const keyToken = normalizeShortcutKeyToken(portableOptionKey);
+  const keyToken = normalizeShortcutKeyToken(shortcutKeyFromEvent(event));
   if (!keyToken) return null;
 
   const parts: string[] = [];

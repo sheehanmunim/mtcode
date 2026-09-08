@@ -374,8 +374,8 @@ export function ComputerUseSettings() {
           <DialogHeader>
             <DialogTitle>Google Chrome</DialogTitle>
             <DialogDescription>
-              Load the ${APP_DISPLAY_NAME} extension so agents can open and drive tabs in a labelled group
-              without taking over your browsing.
+              Load the ${APP_DISPLAY_NAME} extension so agents can open and drive tabs in a labelled
+              group without taking over your browsing.
             </DialogDescription>
           </DialogHeader>
           <DialogPanel className="space-y-3 text-sm text-muted-foreground">
@@ -430,8 +430,8 @@ export function ComputerUseSettings() {
           <DialogHeader>
             <DialogTitle>Allow {permissionPrompt?.label ?? "permission"}</DialogTitle>
             <DialogDescription>
-              {APP_BASE_NAME} needs this macOS privacy permission for Computer Use. System
-              Settings will open to the right Privacy &amp; Security list — turn on the switch for{" "}
+              {APP_BASE_NAME} needs this macOS privacy permission for Computer Use. System Settings
+              will open to the right Privacy &amp; Security list — turn on the switch for{" "}
               {APP_BASE_NAME}.
             </DialogDescription>
           </DialogHeader>

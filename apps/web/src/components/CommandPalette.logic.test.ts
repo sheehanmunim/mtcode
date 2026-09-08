@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
-import type { Thread } from "../types";
+import type { Project, Thread } from "../types";
 import {
   buildBrowseGroups,
+  buildProjectActionItems,
   buildThreadActionItems,
   enumerateCommandPaletteItems,
   filterPinnedBrowseEntries,
@@ -113,6 +114,20 @@ describe("enumerateCommandPaletteItems", () => {
 const LOCAL_ENVIRONMENT_ID = EnvironmentId.make("environment-local");
 const PROJECT_ID = ProjectId.make("project-1");
 
+function makeProject(overrides: Partial<Project> = {}): Project {
+  return {
+    id: PROJECT_ID,
+    environmentId: LOCAL_ENVIRONMENT_ID,
+    title: "Project",
+    workspaceRoot: "/workspace/project",
+    defaultModelSelection: null,
+    scripts: [],
+    createdAt: "2026-03-01T00:00:00.000Z",
+    updatedAt: "2026-03-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function makeThread(overrides: Partial<Thread> = {}): Omit<Thread, "goal"> & {
   readonly goal: {
     readonly status: NonNullable<Thread["goal"]>["status"];
@@ -166,6 +181,28 @@ describe("resolveCurrentStackContext", () => {
 
     expect(context.cwd).toBe("/remote/repo");
     expect(context.project?.environmentId).toBe(remoteEnvironmentId);
+  });
+});
+
+describe("buildProjectActionItems", () => {
+  it("shows the grouped display name but keeps the real title for icons", () => {
+    const project = makeProject({ title: "fleet", workspaceRoot: "/Users/theo/Code/p/fleet" });
+    const iconTitles: string[] = [];
+    const [item] = buildProjectActionItems({
+      projects: [{ ...project, displayName: "t3dotgg/fleet" }],
+      valuePrefix: "project",
+      icon: (candidate) => {
+        iconTitles.push(candidate.title);
+        return null;
+      },
+      runProject: async () => undefined,
+    });
+
+    expect(item?.title).toBe("t3dotgg/fleet");
+    expect(item?.searchTerms).toEqual(
+      expect.arrayContaining(["t3dotgg/fleet", "fleet", "/Users/theo/Code/p/fleet"]),
+    );
+    expect(iconTitles).toEqual(["fleet"]);
   });
 });
 

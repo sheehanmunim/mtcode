@@ -341,7 +341,7 @@ export const VcsPullResult = Schema.Struct({
 export type VcsPullResult = typeof VcsPullResult.Type;
 
 // RPC / domain errors
-export class GitCommandError extends Schema.TaggedErrorClass<GitCommandError>()("GitCommandError", {
+export class GitCommandError extends Schema.TaggedError<GitCommandError>()("GitCommandError", {
   operation: Schema.String,
   command: Schema.String,
   cwd: Schema.String,
@@ -358,7 +358,7 @@ export class GitCommandError extends Schema.TaggedErrorClass<GitCommandError>()(
   }
 }
 
-export class TextGenerationError extends Schema.TaggedErrorClass<TextGenerationError>()(
+export class TextGenerationError extends Schema.TaggedError<TextGenerationError>()(
   "TextGenerationError",
   {
     operation: Schema.String,
@@ -371,7 +371,7 @@ export class TextGenerationError extends Schema.TaggedErrorClass<TextGenerationE
   }
 }
 
-export class GitManagerError extends Schema.TaggedErrorClass<GitManagerError>()("GitManagerError", {
+export class GitManagerError extends Schema.TaggedError<GitManagerError>()("GitManagerError", {
   operation: Schema.String,
   cwd: Schema.String,
   detail: Schema.String,
@@ -382,7 +382,7 @@ export class GitManagerError extends Schema.TaggedErrorClass<GitManagerError>()(
   }
 }
 
-export class GitPullRequestMaterializationError extends Schema.TaggedErrorClass<GitPullRequestMaterializationError>()(
+export class GitPullRequestMaterializationError extends Schema.TaggedError<GitPullRequestMaterializationError>()(
   "GitPullRequestMaterializationError",
   {
     cwd: TrimmedNonEmptyStringSchema,
