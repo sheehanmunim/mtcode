@@ -172,7 +172,7 @@ const readAmbiguousMatchCount = (cause: unknown): number => {
   return 0;
 };
 
-export class PreviewAutomationTargetNotFoundHostError extends Schema.TaggedErrorClass<PreviewAutomationTargetNotFoundHostError>()(
+export class PreviewAutomationTargetNotFoundHostError extends Schema.TaggedError<PreviewAutomationTargetNotFoundHostError>()(
   "PreviewAutomationTargetNotFoundHostError",
   PreviewAutomationTargetHostFields,
 ) {
@@ -185,7 +185,7 @@ export class PreviewAutomationTargetNotFoundHostError extends Schema.TaggedError
   }
 }
 
-export class PreviewAutomationTargetHiddenHostError extends Schema.TaggedErrorClass<PreviewAutomationTargetHiddenHostError>()(
+export class PreviewAutomationTargetHiddenHostError extends Schema.TaggedError<PreviewAutomationTargetHiddenHostError>()(
   "PreviewAutomationTargetHiddenHostError",
   PreviewAutomationTargetHostFields,
 ) {
@@ -198,7 +198,7 @@ export class PreviewAutomationTargetHiddenHostError extends Schema.TaggedErrorCl
   }
 }
 
-export class PreviewAutomationTargetDisabledHostError extends Schema.TaggedErrorClass<PreviewAutomationTargetDisabledHostError>()(
+export class PreviewAutomationTargetDisabledHostError extends Schema.TaggedError<PreviewAutomationTargetDisabledHostError>()(
   "PreviewAutomationTargetDisabledHostError",
   PreviewAutomationTargetHostFields,
 ) {
@@ -211,7 +211,7 @@ export class PreviewAutomationTargetDisabledHostError extends Schema.TaggedError
   }
 }
 
-export class PreviewAutomationTargetAmbiguousHostError extends Schema.TaggedErrorClass<PreviewAutomationTargetAmbiguousHostError>()(
+export class PreviewAutomationTargetAmbiguousHostError extends Schema.TaggedError<PreviewAutomationTargetAmbiguousHostError>()(
   "PreviewAutomationTargetAmbiguousHostError",
   {
     ...PreviewAutomationTargetHostFields,

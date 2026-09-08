@@ -60,7 +60,7 @@ const isProviderCommandNotFoundError = Schema.is(ProviderCommandNotFoundError);
  * reporting an `error` snapshot so `makeManagedServerProvider` can keep the
  * last known snapshot rather than overwriting it with a guess.
  */
-export class ProviderProbeTimeoutError extends Schema.TaggedErrorClass<ProviderProbeTimeoutError>()(
+export class ProviderProbeTimeoutError extends Schema.TaggedError<ProviderProbeTimeoutError>()(
   "ProviderProbeTimeoutError",
   {
     provider: Schema.String,

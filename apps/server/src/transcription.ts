@@ -36,7 +36,7 @@ export interface VoiceTranscriptionModelsInput {
   readonly apiKey: string;
 }
 
-export class TranscriptionAudioTooLargeError extends Schema.TaggedErrorClass<TranscriptionAudioTooLargeError>()(
+export class TranscriptionAudioTooLargeError extends Schema.TaggedError<TranscriptionAudioTooLargeError>()(
   "TranscriptionAudioTooLargeError",
   { receivedBytes: Schema.Number },
 ) {
@@ -45,7 +45,7 @@ export class TranscriptionAudioTooLargeError extends Schema.TaggedErrorClass<Tra
   }
 }
 
-export class TranscriptionBodyReadError extends Schema.TaggedErrorClass<TranscriptionBodyReadError>()(
+export class TranscriptionBodyReadError extends Schema.TaggedError<TranscriptionBodyReadError>()(
   "TranscriptionBodyReadError",
   { cause: Schema.Defect() },
 ) {
@@ -54,7 +54,7 @@ export class TranscriptionBodyReadError extends Schema.TaggedErrorClass<Transcri
   }
 }
 
-export class TranscriptionEmptyAudioError extends Schema.TaggedErrorClass<TranscriptionEmptyAudioError>()(
+export class TranscriptionEmptyAudioError extends Schema.TaggedError<TranscriptionEmptyAudioError>()(
   "TranscriptionEmptyAudioError",
   {},
 ) {
@@ -63,7 +63,7 @@ export class TranscriptionEmptyAudioError extends Schema.TaggedErrorClass<Transc
   }
 }
 
-export class TranscriptionProviderUnsupportedError extends Schema.TaggedErrorClass<TranscriptionProviderUnsupportedError>()(
+export class TranscriptionProviderUnsupportedError extends Schema.TaggedError<TranscriptionProviderUnsupportedError>()(
   "TranscriptionProviderUnsupportedError",
   {},
 ) {
@@ -72,7 +72,7 @@ export class TranscriptionProviderUnsupportedError extends Schema.TaggedErrorCla
   }
 }
 
-export class TranscriptionApiKeyMissingError extends Schema.TaggedErrorClass<TranscriptionApiKeyMissingError>()(
+export class TranscriptionApiKeyMissingError extends Schema.TaggedError<TranscriptionApiKeyMissingError>()(
   "TranscriptionApiKeyMissingError",
   {},
 ) {
@@ -81,7 +81,7 @@ export class TranscriptionApiKeyMissingError extends Schema.TaggedErrorClass<Tra
   }
 }
 
-export class TranscriptionModelMissingError extends Schema.TaggedErrorClass<TranscriptionModelMissingError>()(
+export class TranscriptionModelMissingError extends Schema.TaggedError<TranscriptionModelMissingError>()(
   "TranscriptionModelMissingError",
   {},
 ) {
@@ -90,7 +90,7 @@ export class TranscriptionModelMissingError extends Schema.TaggedErrorClass<Tran
   }
 }
 
-export class TranscriptionRequestError extends Schema.TaggedErrorClass<TranscriptionRequestError>()(
+export class TranscriptionRequestError extends Schema.TaggedError<TranscriptionRequestError>()(
   "TranscriptionRequestError",
   {
     provider: Schema.String,
@@ -102,7 +102,7 @@ export class TranscriptionRequestError extends Schema.TaggedErrorClass<Transcrip
   }
 }
 
-export class TranscriptionProviderError extends Schema.TaggedErrorClass<TranscriptionProviderError>()(
+export class TranscriptionProviderError extends Schema.TaggedError<TranscriptionProviderError>()(
   "TranscriptionProviderError",
   {
     provider: Schema.String,
@@ -114,7 +114,7 @@ export class TranscriptionProviderError extends Schema.TaggedErrorClass<Transcri
   }
 }
 
-export class TranscriptionResponseError extends Schema.TaggedErrorClass<TranscriptionResponseError>()(
+export class TranscriptionResponseError extends Schema.TaggedError<TranscriptionResponseError>()(
   "TranscriptionResponseError",
   {
     provider: Schema.String,

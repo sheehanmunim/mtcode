@@ -81,7 +81,7 @@ export const VoiceApiErrorReason = Schema.Literals([
 ]);
 export type VoiceApiErrorReason = typeof VoiceApiErrorReason.Type;
 
-export class VoiceApiError extends Schema.TaggedErrorClass<VoiceApiError>()("VoiceApiError", {
+export class VoiceApiError extends Schema.TaggedError<VoiceApiError>()("VoiceApiError", {
   reason: VoiceApiErrorReason,
   message: Schema.String,
 }) {}

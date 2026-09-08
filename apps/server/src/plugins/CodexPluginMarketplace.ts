@@ -331,7 +331,7 @@ const CodexPluginRuntimeErrorFields = {
   cause: Schema.optional(Schema.Defect()),
 };
 
-class CodexPluginProviderUnavailableError extends Schema.TaggedErrorClass<CodexPluginProviderUnavailableError>()(
+class CodexPluginProviderUnavailableError extends Schema.TaggedError<CodexPluginProviderUnavailableError>()(
   "CodexPluginProviderUnavailableError",
   CodexPluginRuntimeErrorFields,
 ) {
@@ -340,7 +340,7 @@ class CodexPluginProviderUnavailableError extends Schema.TaggedErrorClass<CodexP
   }
 }
 
-class CodexPluginNotFoundError extends Schema.TaggedErrorClass<CodexPluginNotFoundError>()(
+class CodexPluginNotFoundError extends Schema.TaggedError<CodexPluginNotFoundError>()(
   "CodexPluginNotFoundError",
   CodexPluginRuntimeErrorFields,
 ) {
@@ -350,7 +350,7 @@ class CodexPluginNotFoundError extends Schema.TaggedErrorClass<CodexPluginNotFou
   }
 }
 
-class CodexPluginStillInstalledError extends Schema.TaggedErrorClass<CodexPluginStillInstalledError>()(
+class CodexPluginStillInstalledError extends Schema.TaggedError<CodexPluginStillInstalledError>()(
   "CodexPluginStillInstalledError",
   CodexPluginRuntimeErrorFields,
 ) {
@@ -360,7 +360,7 @@ class CodexPluginStillInstalledError extends Schema.TaggedErrorClass<CodexPlugin
   }
 }
 
-class CodexPluginOperationFailedError extends Schema.TaggedErrorClass<CodexPluginOperationFailedError>()(
+class CodexPluginOperationFailedError extends Schema.TaggedError<CodexPluginOperationFailedError>()(
   "CodexPluginOperationFailedError",
   CodexPluginRuntimeErrorFields,
 ) {

@@ -59,7 +59,7 @@ export const ProviderAccountLoginEvent = Schema.Union([
 ]);
 export type ProviderAccountLoginEvent = typeof ProviderAccountLoginEvent.Type;
 
-export class ProviderAccountLoginError extends Schema.TaggedErrorClass<ProviderAccountLoginError>()(
+export class ProviderAccountLoginError extends Schema.TaggedError<ProviderAccountLoginError>()(
   "ProviderAccountLoginError",
   {
     instanceId: ProviderInstanceId,

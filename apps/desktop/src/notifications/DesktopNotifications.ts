@@ -18,7 +18,7 @@ import * as Electron from "electron";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 import { DESKTOP_NOTIFICATION_ACTIVATED_CHANNEL } from "../ipc/channels.ts";
 
-class DesktopNotificationShowError extends Schema.TaggedErrorClass<DesktopNotificationShowError>()(
+class DesktopNotificationShowError extends Schema.TaggedError<DesktopNotificationShowError>()(
   "DesktopNotificationShowError",
   {
     notificationKey: Schema.String,

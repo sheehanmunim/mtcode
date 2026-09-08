@@ -238,7 +238,7 @@ export const PluginMarketplaceUnavailableReason = Schema.Literals([
 ]);
 export type PluginMarketplaceUnavailableReason = typeof PluginMarketplaceUnavailableReason.Type;
 
-export class PluginMarketplaceUnavailableError extends Schema.TaggedErrorClass<PluginMarketplaceUnavailableError>()(
+export class PluginMarketplaceUnavailableError extends Schema.TaggedError<PluginMarketplaceUnavailableError>()(
   "PluginMarketplaceUnavailableError",
   {
     reason: PluginMarketplaceUnavailableReason,
@@ -258,7 +258,7 @@ export class PluginMarketplaceUnavailableError extends Schema.TaggedErrorClass<P
   }
 }
 
-export class PluginMarketplaceNotFoundError extends Schema.TaggedErrorClass<PluginMarketplaceNotFoundError>()(
+export class PluginMarketplaceNotFoundError extends Schema.TaggedError<PluginMarketplaceNotFoundError>()(
   "PluginMarketplaceNotFoundError",
   { pluginId: TrimmedNonEmptyString },
   { httpApiStatus: 404 },
@@ -272,7 +272,7 @@ export class PluginMarketplaceNotFoundError extends Schema.TaggedErrorClass<Plug
   }
 }
 
-export class PluginMarketplaceOperationError extends Schema.TaggedErrorClass<PluginMarketplaceOperationError>()(
+export class PluginMarketplaceOperationError extends Schema.TaggedError<PluginMarketplaceOperationError>()(
   "PluginMarketplaceOperationError",
   {
     operation: Schema.Literals(["install", "remove", "setup", "authenticate"]),

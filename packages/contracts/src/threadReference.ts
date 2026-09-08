@@ -60,7 +60,7 @@ export const ThreadReferenceReadResult = Schema.Struct({
 });
 export type ThreadReferenceReadResult = typeof ThreadReferenceReadResult.Type;
 
-export class ThreadReferenceNotFoundError extends Schema.TaggedErrorClass<ThreadReferenceNotFoundError>()(
+export class ThreadReferenceNotFoundError extends Schema.TaggedError<ThreadReferenceNotFoundError>()(
   "ThreadReferenceNotFoundError",
   { threadId: ThreadId },
 ) {
@@ -69,7 +69,7 @@ export class ThreadReferenceNotFoundError extends Schema.TaggedErrorClass<Thread
   }
 }
 
-export class ThreadReferenceInvalidCursorError extends Schema.TaggedErrorClass<ThreadReferenceInvalidCursorError>()(
+export class ThreadReferenceInvalidCursorError extends Schema.TaggedError<ThreadReferenceInvalidCursorError>()(
   "ThreadReferenceInvalidCursorError",
   { threadId: ThreadId, cursor: Schema.String },
 ) {
@@ -78,7 +78,7 @@ export class ThreadReferenceInvalidCursorError extends Schema.TaggedErrorClass<T
   }
 }
 
-export class ThreadReferenceUnavailableError extends Schema.TaggedErrorClass<ThreadReferenceUnavailableError>()(
+export class ThreadReferenceUnavailableError extends Schema.TaggedError<ThreadReferenceUnavailableError>()(
   "ThreadReferenceUnavailableError",
   { threadId: ThreadId, cause: Schema.optional(Schema.Defect()) },
 ) {

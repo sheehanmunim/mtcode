@@ -138,7 +138,7 @@ export const ComputerViewErrorCode = Schema.Literals([
 ]);
 export type ComputerViewErrorCode = typeof ComputerViewErrorCode.Type;
 
-export class ComputerViewError extends Schema.TaggedErrorClass<ComputerViewError>()(
+export class ComputerViewError extends Schema.TaggedError<ComputerViewError>()(
   "ComputerViewError",
   {
     code: ComputerViewErrorCode,

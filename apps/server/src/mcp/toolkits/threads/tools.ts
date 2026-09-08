@@ -12,24 +12,21 @@ export const THREAD_RELAY_LIST_LIMIT = 50;
 export const THREAD_CREATE_TITLE_MAX_CHARS = 200;
 export const THREAD_CREATE_MAX_WORKING_SIBLINGS = 8;
 
-export class ThreadRelayError extends Schema.TaggedErrorClass<ThreadRelayError>()(
-  "ThreadRelayError",
-  {
-    code: Schema.Literals([
-      "source_unavailable",
-      "target_not_found",
-      "self_send",
-      "self_archive",
-      "cross_project",
-      "spawn_limit",
-      "target_busy",
-      "query_failed",
-      "dispatch_failed",
-    ]),
-    detail: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  },
-) {
+export class ThreadRelayError extends Schema.TaggedError<ThreadRelayError>()("ThreadRelayError", {
+  code: Schema.Literals([
+    "source_unavailable",
+    "target_not_found",
+    "self_send",
+    "self_archive",
+    "cross_project",
+    "spawn_limit",
+    "target_busy",
+    "query_failed",
+    "dispatch_failed",
+  ]),
+  detail: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {
   override get message(): string {
     return this.detail;
   }

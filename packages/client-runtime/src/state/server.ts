@@ -82,7 +82,7 @@ export interface ServerUpdateTarget {
   readonly input: EnvironmentRpcInput<typeof WS_METHODS.serverUpdateServer>;
 }
 
-export class EnvironmentLabelUpdateUnsupportedError extends Schema.TaggedErrorClass<EnvironmentLabelUpdateUnsupportedError>()(
+export class EnvironmentLabelUpdateUnsupportedError extends Schema.TaggedError<EnvironmentLabelUpdateUnsupportedError>()(
   "EnvironmentLabelUpdateUnsupportedError",
   {
     requestedLabel: Schema.String,

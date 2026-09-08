@@ -37,7 +37,7 @@ type DaemonState = {
   stopping: Promise<void> | null;
 };
 
-export class ComputerHistoryOperationError extends Schema.TaggedErrorClass<ComputerHistoryOperationError>()(
+export class ComputerHistoryOperationError extends Schema.TaggedError<ComputerHistoryOperationError>()(
   "ComputerHistoryOperationError",
   {
     operation: Schema.Literals([

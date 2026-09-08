@@ -101,7 +101,7 @@ export class EnvironmentLinkRevokePersistenceError extends Schema.TaggedError<En
   }
 }
 
-export class EnvironmentLabelUpdatePersistenceError extends Schema.TaggedErrorClass<EnvironmentLabelUpdatePersistenceError>()(
+export class EnvironmentLabelUpdatePersistenceError extends Schema.TaggedError<EnvironmentLabelUpdatePersistenceError>()(
   "EnvironmentLabelUpdatePersistenceError",
   {
     environmentId: Schema.String,

@@ -112,7 +112,7 @@ export const PullRequestStackMergeResult = Schema.Struct({
 });
 export type PullRequestStackMergeResult = typeof PullRequestStackMergeResult.Type;
 
-export class PullRequestStackError extends Schema.TaggedErrorClass<PullRequestStackError>()(
+export class PullRequestStackError extends Schema.TaggedError<PullRequestStackError>()(
   "PullRequestStackError",
   {
     operation: TrimmedNonEmptyString,

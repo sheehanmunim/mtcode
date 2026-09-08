@@ -53,7 +53,7 @@ function providerLabel(harness: McpOAuthHarness): string {
   return harness === "codex" ? "Codex" : harness === "claude" ? "Claude Code" : "Cursor";
 }
 
-export class McpOAuthProviderUnavailableError extends Schema.TaggedErrorClass<McpOAuthProviderUnavailableError>()(
+export class McpOAuthProviderUnavailableError extends Schema.TaggedError<McpOAuthProviderUnavailableError>()(
   "McpOAuthProviderUnavailableError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -62,7 +62,7 @@ export class McpOAuthProviderUnavailableError extends Schema.TaggedErrorClass<Mc
   }
 }
 
-export class McpOAuthCallbackMismatchError extends Schema.TaggedErrorClass<McpOAuthCallbackMismatchError>()(
+export class McpOAuthCallbackMismatchError extends Schema.TaggedError<McpOAuthCallbackMismatchError>()(
   "McpOAuthCallbackMismatchError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -71,7 +71,7 @@ export class McpOAuthCallbackMismatchError extends Schema.TaggedErrorClass<McpOA
   }
 }
 
-export class McpOAuthCallbackRejectedError extends Schema.TaggedErrorClass<McpOAuthCallbackRejectedError>()(
+export class McpOAuthCallbackRejectedError extends Schema.TaggedError<McpOAuthCallbackRejectedError>()(
   "McpOAuthCallbackRejectedError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -80,7 +80,7 @@ export class McpOAuthCallbackRejectedError extends Schema.TaggedErrorClass<McpOA
   }
 }
 
-export class McpOAuthAuthenticationCancelledError extends Schema.TaggedErrorClass<McpOAuthAuthenticationCancelledError>()(
+export class McpOAuthAuthenticationCancelledError extends Schema.TaggedError<McpOAuthAuthenticationCancelledError>()(
   "McpOAuthAuthenticationCancelledError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -89,7 +89,7 @@ export class McpOAuthAuthenticationCancelledError extends Schema.TaggedErrorClas
   }
 }
 
-export class McpOAuthAuthenticationFailedError extends Schema.TaggedErrorClass<McpOAuthAuthenticationFailedError>()(
+export class McpOAuthAuthenticationFailedError extends Schema.TaggedError<McpOAuthAuthenticationFailedError>()(
   "McpOAuthAuthenticationFailedError",
   { ...McpOAuthRuntimeErrorFields, exitCode: Schema.optional(Schema.Number) },
 ) {
@@ -98,7 +98,7 @@ export class McpOAuthAuthenticationFailedError extends Schema.TaggedErrorClass<M
   }
 }
 
-export class McpOAuthUnsupportedHarnessError extends Schema.TaggedErrorClass<McpOAuthUnsupportedHarnessError>()(
+export class McpOAuthUnsupportedHarnessError extends Schema.TaggedError<McpOAuthUnsupportedHarnessError>()(
   "McpOAuthUnsupportedHarnessError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -107,7 +107,7 @@ export class McpOAuthUnsupportedHarnessError extends Schema.TaggedErrorClass<Mcp
   }
 }
 
-export class McpOAuthNoPendingSessionError extends Schema.TaggedErrorClass<McpOAuthNoPendingSessionError>()(
+export class McpOAuthNoPendingSessionError extends Schema.TaggedError<McpOAuthNoPendingSessionError>()(
   "McpOAuthNoPendingSessionError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -116,7 +116,7 @@ export class McpOAuthNoPendingSessionError extends Schema.TaggedErrorClass<McpOA
   }
 }
 
-export class McpOAuthAuthorizationTimeoutError extends Schema.TaggedErrorClass<McpOAuthAuthorizationTimeoutError>()(
+export class McpOAuthAuthorizationTimeoutError extends Schema.TaggedError<McpOAuthAuthorizationTimeoutError>()(
   "McpOAuthAuthorizationTimeoutError",
   McpOAuthRuntimeErrorFields,
 ) {
@@ -125,7 +125,7 @@ export class McpOAuthAuthorizationTimeoutError extends Schema.TaggedErrorClass<M
   }
 }
 
-export class McpOAuthCommandFailedError extends Schema.TaggedErrorClass<McpOAuthCommandFailedError>()(
+export class McpOAuthCommandFailedError extends Schema.TaggedError<McpOAuthCommandFailedError>()(
   "McpOAuthCommandFailedError",
   { ...McpOAuthRuntimeErrorFields, exitCode: Schema.optional(Schema.Number) },
 ) {

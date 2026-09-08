@@ -18,7 +18,7 @@ import * as SourceControlProvider from "./SourceControlProvider.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
 import * as VcsDriverRegistry from "../vcs/VcsDriverRegistry.ts";
 
-export class ForgejoApiError extends Schema.TaggedErrorClass<ForgejoApiError>()("ForgejoApiError", {
+export class ForgejoApiError extends Schema.TaggedError<ForgejoApiError>()("ForgejoApiError", {
   operation: Schema.String,
   detail: Schema.String,
   status: Schema.optional(Schema.Number),

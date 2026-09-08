@@ -96,7 +96,7 @@ export const ComputerTaskErrorCode = Schema.Literals([
 ]);
 export type ComputerTaskErrorCode = typeof ComputerTaskErrorCode.Type;
 
-export class ComputerTaskError extends Schema.TaggedErrorClass<ComputerTaskError>()(
+export class ComputerTaskError extends Schema.TaggedError<ComputerTaskError>()(
   "ComputerTaskError",
   {
     code: ComputerTaskErrorCode,

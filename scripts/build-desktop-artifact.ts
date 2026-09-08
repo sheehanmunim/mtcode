@@ -462,7 +462,7 @@ export function desktopMcpExecutableName(platform: typeof BuildPlatform.Type): s
   return platform === "win" ? `${DESKTOP_MCP_EXECUTABLE_NAME}.exe` : DESKTOP_MCP_EXECUTABLE_NAME;
 }
 
-export class DesktopMcpBuildOutputMissingError extends Schema.TaggedErrorClass<DesktopMcpBuildOutputMissingError>()(
+export class DesktopMcpBuildOutputMissingError extends Schema.TaggedError<DesktopMcpBuildOutputMissingError>()(
   "DesktopMcpBuildOutputMissingError",
   {
     candidates: Schema.Array(Schema.String),
