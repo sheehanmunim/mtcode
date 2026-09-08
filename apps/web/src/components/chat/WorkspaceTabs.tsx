@@ -152,10 +152,12 @@ function ServerThreadTabItem({
           className="group/tab-trigger flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-sm text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ProjectFavicon
-            environmentId={tab.environmentId}
-            cwd={tab.projectCwd ?? ""}
-            projectName={tab.projectName ?? title}
-            faviconPath={tab.faviconPath}
+            project={{
+              environmentId: tab.environmentId,
+              workspaceRoot: tab.projectCwd ?? "",
+              title: tab.projectName ?? title,
+              faviconPath: tab.faviconPath,
+            }}
             className="size-3.5 shrink-0"
           />
           <Tooltip>

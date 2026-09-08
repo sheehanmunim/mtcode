@@ -667,12 +667,17 @@ export function isSidebarNestedLinkClick(target: EventTarget | null): boolean {
 // Shift+click on the new thread button creates directly in the current
 // project. A plain click starts a thread on the current computer instead of
 // opening the command palette's project picker. A project-scoped sidebar
-// still creates in that project.
+// still creates in that project. A single project group also creates
+// directly (upstream unified-navigation behavior kept by the merged call).
 export function shouldCreateNewThreadInCurrentProject(
   shiftKey: boolean,
+  projectGroupCountOrScope: number | boolean = false,
   hasProjectScope = false,
 ): boolean {
-  return hasProjectScope || shiftKey;
+  if (typeof projectGroupCountOrScope === "number") {
+    return hasProjectScope || shiftKey || projectGroupCountOrScope <= 1;
+  }
+  return hasProjectScope || projectGroupCountOrScope || shiftKey;
 }
 
 export function orderItemsByPreferredIds<TItem, TId>(input: {
