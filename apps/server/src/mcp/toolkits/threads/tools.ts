@@ -4,6 +4,7 @@ import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import { EmptyToolInput } from "../emptyToolInput.ts";
 import { OrchestrationEngineService } from "../../../orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "../../../orchestration/Services/ProjectionSnapshotQuery.ts";
 
@@ -93,7 +94,7 @@ const dependencies = [
 export const ThreadListTool = Tool.make("thread_list", {
   description:
     "List active sibling T3 threads in this thread's project. Returns stable T3 thread IDs plus runtime and workspace context. These are durable T3 threads, not provider process or conversation IDs.",
-  parameters: Schema.Struct({}),
+  parameters: EmptyToolInput,
   success: ThreadListResult,
   failure: ThreadRelayError,
   dependencies,

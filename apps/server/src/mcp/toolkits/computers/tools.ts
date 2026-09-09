@@ -10,6 +10,7 @@ import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
+import { EmptyToolInput } from "../emptyToolInput.ts";
 import * as ComputerTaskBroker from "../../ComputerTaskBroker.ts";
 import * as ServerEnvironment from "../../../environment/ServerEnvironment.ts";
 import { OrchestrationEngineService } from "../../../orchestration/Services/OrchestrationEngine.ts";
@@ -51,7 +52,7 @@ const ComputerSendInput = Schema.Struct({
 
 export const ComputerListTool = Tool.make("computer_list", {
   description: `List computers this ${resolveAppDisplayName()} client can run work on: this machine, SSH hosts, T3 Connect machines, and other paired environments. Call this before computer_send when the task belongs on another OS, desktop, GPU, or filesystem. Returns ids, labels, OS, connection kind, and whether each computer is reachable.`,
-  parameters: Schema.Struct({}),
+  parameters: EmptyToolInput,
   success: ComputerListResult,
   failure: ComputerTaskError,
   dependencies,
