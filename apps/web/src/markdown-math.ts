@@ -44,11 +44,18 @@ interface DelimiterMatch {
  * therefore inspect the original source, but use CommonMark's own text-node
  * positions to avoid rewriting code, HTML, and link destinations. Rewrites
  * are paired and length preserving so task-list source offsets remain valid.
+ *
+ * Delimiters are paired across text nodes, in source order. LaTeX inside a
+ * `\[...\]` block routinely splits the surrounding paragraph before we get
+ * here: `_{...}` reads as emphasis and a line holding only `=` turns the
+ * previous lines into a setext heading. Pairing per text node would leave
+ * such blocks unrendered. A pair never spans a blank line, which is also
+ * where TeX itself refuses to continue math mode.
  */
 export function normalizeLatexMathDelimiters(source: string): string {
   if (!source.includes("\\(") && !source.includes("\\[")) return source;
 
-  const replacements = new Map<number, string>();
+  const delimiters: DelimiterMatch[] = [];
   const tree = markdownParser.parse(source) as MarkdownNode;
 
   const visit = (node: MarkdownNode, linkUrl: string | null) => {
@@ -58,7 +65,7 @@ export function normalizeLatexMathDelimiters(source: string): string {
       // Autolink labels are their destination. Treat them as URLs rather than
       // prose even though the Markdown AST represents them as text children.
       if (!(nextLinkUrl !== null && node.value === nextLinkUrl)) {
-        collectTextNodeReplacements(source, node, replacements);
+        collectTextNodeDelimiters(source, node, delimiters);
       }
       return;
     }
@@ -67,6 +74,7 @@ export function normalizeLatexMathDelimiters(source: string): string {
   };
 
   visit(tree, null);
+  const replacements = pairDelimiters(source, delimiters);
   if (replacements.size === 0) return source;
 
   const output = source.split("");
@@ -133,16 +141,15 @@ export function rehypeStripKatexErrorTitle() {
   };
 }
 
-function collectTextNodeReplacements(
+function collectTextNodeDelimiters(
   source: string,
   node: MarkdownNode,
-  replacements: Map<number, string>,
+  delimiters: DelimiterMatch[],
 ): void {
   const start = node.position?.start?.offset;
   const end = node.position?.end?.offset;
   if (start === undefined || end === undefined) return;
 
-  const delimiters: DelimiterMatch[] = [];
   for (let index = start; index < end - 1; index += 1) {
     if (source[index] !== "\\" || isEscapedBackslash(source, index)) continue;
     const delimiter = source[index + 1];
@@ -151,9 +158,16 @@ function collectTextNodeReplacements(
       index += 1;
     }
   }
+}
+
+function pairDelimiters(source: string, delimiters: DelimiterMatch[]): Map<number, string> {
+  const replacements = new Map<number, string>();
+  // Text nodes arrive in document order, but nested nodes can surface after
+  // their siblings; sort so pairing follows the source.
+  const ordered = [...delimiters].sort((left, right) => left.index - right.index);
 
   let opener: DelimiterMatch | null = null;
-  for (const match of delimiters) {
+  for (const match of ordered) {
     if (match.delimiter === "(" || match.delimiter === "[") {
       // Math delimiters do not nest. Prefer the newest opener so malformed
       // prose cannot prevent a later valid expression from rendering.
@@ -164,11 +178,20 @@ function collectTextNodeReplacements(
 
     const expectedCloser = opener.delimiter === "(" ? ")" : "]";
     if (match.delimiter !== expectedCloser) continue;
+    if (containsBlankLine(source, opener.index, match.index)) {
+      opener = null;
+      continue;
+    }
 
     replacements.set(opener.index, "$$");
     replacements.set(match.index, "$$");
     opener = null;
   }
+  return replacements;
+}
+
+function containsBlankLine(source: string, start: number, end: number): boolean {
+  return /\n[ \t]*\n/.test(source.slice(start, end));
 }
 
 function isEscapedBackslash(source: string, index: number): boolean {

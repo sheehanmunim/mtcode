@@ -150,9 +150,39 @@ describe("normalizeLatexMathDelimiters", () => {
     );
   });
 
-  it("does not pair delimiters across separate text nodes", () => {
-    const source = "\\(open **bold** close\\)";
+  it("pairs delimiters across the text nodes inline formatting creates", () => {
+    expect(normalizeLatexMathDelimiters("\\(open **bold** close\\)")).toBe(
+      "$$open **bold** close$$",
+    );
+    expect(normalizeLatexMathDelimiters("\\(a_{i}_ b\\)")).toBe("$$a_{i}_ b$$");
+  });
+
+  it("does not pair delimiters across a blank line", () => {
+    const source = "\\[ opened here\n\nclosed there \\]";
     expect(normalizeLatexMathDelimiters(source)).toBe(source);
+  });
+
+  it("renders a bracket display block whose body would form a setext heading", () => {
+    const source = [
+      "For any vector \\(\\mathbf A\\), BKE says",
+      "\\[",
+      "\\underbrace{\\left(\\frac{d\\mathbf A}{dt}\\right)_I}_{\\text{fixed}}",
+      "=",
+      "\\underbrace{\\left(\\frac{d\\mathbf A}{dt}\\right)_R}_{\\text{rotating}} + \\mathbf A.",
+      "\\]",
+      "",
+      "Next paragraph.",
+    ].join("\n");
+    const normalized = normalizeLatexMathDelimiters(source);
+    expect(normalized).toHaveLength(source.length);
+    expect(normalized).toContain("\n$$\n\\underbrace");
+    expect(normalized).toContain("\\mathbf A.\n$$\n");
+
+    const html = renderMarkdown(source, true);
+    expect(html).not.toContain("<h1");
+    expect(html).toContain('class="katex-display"');
+    // The raw TeX survives only inside KaTeX's MathML annotation, never as prose.
+    expect(html).not.toMatch(/<p>[^<]*underbrace/);
   });
 
   it("leaves unrelated escapes and dollar amounts unchanged", () => {
