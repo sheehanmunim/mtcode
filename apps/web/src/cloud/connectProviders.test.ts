@@ -20,7 +20,7 @@ const mt = {
   clerkJwtTemplate: "t3-relay",
   clerkCliOAuthClientId: "",
   relayUrl: "",
-  hostedAppUrl: "https://mtcode.munimtech.com",
+  hostedAppUrl: "https://mt.example.test",
 };
 
 const t3 = {
@@ -52,19 +52,19 @@ describe("parseConnectProviders", () => {
 describe("canEmbedClerkProvider", () => {
   it("embeds T3 Connect only on Electron or app.t3.codes", () => {
     expect(
-      canEmbedClerkProvider(t3, { origin: "https://mtcode.munimtech.com", isElectron: false }),
+      canEmbedClerkProvider(t3, { origin: "https://mt.example.test", isElectron: false }),
     ).toBe(false);
     expect(canEmbedClerkProvider(t3, { origin: "https://app.t3.codes", isElectron: false })).toBe(
       true,
     );
-    expect(
-      canEmbedClerkProvider(t3, { origin: "https://mtcode.munimtech.com", isElectron: true }),
-    ).toBe(true);
+    expect(canEmbedClerkProvider(t3, { origin: "https://mt.example.test", isElectron: true })).toBe(
+      true,
+    );
   });
 
   it("embeds MT Connect on the hosted web origin", () => {
     expect(
-      canEmbedClerkProvider(mt, { origin: "https://mtcode.munimtech.com", isElectron: false }),
+      canEmbedClerkProvider(mt, { origin: "https://mt.example.test", isElectron: false }),
     ).toBe(true);
   });
 });
@@ -87,7 +87,7 @@ describe("resolveDefaultConnectProviderId", () => {
     // Origins where T3 Clerk cannot embed still fall back to the only provider.
     expect(
       resolveDefaultConnectProviderId([t3], {
-        origin: "https://mtcode.munimtech.com",
+        origin: "https://mt.example.test",
         isElectron: false,
       }),
     ).toBe("t3");
@@ -96,7 +96,7 @@ describe("resolveDefaultConnectProviderId", () => {
   it("defaults to MT Connect on the hosted web (legacy two-provider input)", () => {
     expect(
       resolveDefaultConnectProviderId([mt, t3], {
-        origin: "https://mtcode.munimtech.com",
+        origin: "https://mt.example.test",
         isElectron: false,
       }),
     ).toBe("mt");
@@ -116,7 +116,7 @@ describe("resolveEmbeddedClerkProvider", () => {
   it("falls back to MT Connect when T3 cannot embed on the hosted web", () => {
     expect(
       resolveEmbeddedClerkProvider([mt, t3], "t3", {
-        origin: "https://mtcode.munimtech.com",
+        origin: "https://mt.example.test",
         isElectron: false,
       }),
     ).toEqual(mt);
@@ -127,7 +127,7 @@ describe("selectEmbeddableConnectProviderId", () => {
   it("rejects T3 on hosted Munim web", () => {
     expect(
       selectEmbeddableConnectProviderId([mt, t3], "t3", {
-        origin: "https://mtcode.munimtech.com",
+        origin: "https://mt.example.test",
         isElectron: false,
       }),
     ).toBeNull();

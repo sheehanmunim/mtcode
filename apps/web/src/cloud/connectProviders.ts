@@ -138,9 +138,9 @@ export function resolveDefaultConnectProviderId(
   }
   // Prefer the provider that can actually tunnel (Sheehan, 2026-08-25):
   // cross-machine sync goes through T3 Connect's relay, so a relay-capable
-  // provider outranks a Clerk-only one. MT Connect stays one switch away for
-  // mtcode.munimtech.com sign-in; on origins where T3 Clerk cannot embed
-  // (the hosted web app) the Clerk-only provider remains the default.
+  // provider outranks a Clerk-only one. MT Connect stays one switch away; on
+  // origins where T3 Clerk cannot embed, the Clerk-only provider remains the
+  // default.
   const relayCapable = providers.find(
     (provider) => provider.relayUrl !== "" && canEmbedClerkProvider(provider, ctx),
   );

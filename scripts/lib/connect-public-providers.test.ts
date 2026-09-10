@@ -14,7 +14,7 @@ describe("buildConnectProviders", () => {
     const providers = buildConnectProviders({
       T3CODE_CLERK_PUBLISHABLE_KEY: "pk_test_munim",
       T3CODE_CLERK_JWT_TEMPLATE: "t3-relay",
-      T3CODE_HOSTED_APP_URL: "https://mtcode.munimtech.com",
+      T3CODE_HOSTED_APP_URL: "https://mt.example.test",
     });
     expect(providers.map((provider) => provider.id)).toEqual(["mt", "t3"]);
     expect(providers[0]?.relayUrl).toBe("");

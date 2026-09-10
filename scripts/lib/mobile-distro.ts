@@ -64,7 +64,8 @@ const MUNIM: MobileDistroIdentity = {
   slug: "mt-code",
   appleTeamId: "6T5J6U2UVT",
   clerkRelyingParty: "clerk.mtcode.munimtech.com",
-  hostedAppDomain: "mtcode.munimtech.com",
+  // No Munim-hosted web app, so the Munim build advertises no universal-link domain.
+  hostedAppDomain: undefined,
   // @munimtechnologies/mt-code
   easProjectId: "0c4e70dd-ce27-4669-aba1-d1e5a683fbbf",
   expoOwner: "munimtechnologies",

@@ -32,7 +32,7 @@ describe("mobile-distro", () => {
     expect(resolveMobileDistroIdentity("munim").clerkRelyingParty).toBe(
       "clerk.mtcode.munimtech.com",
     );
-    expect(resolveMobileDistroIdentity("munim").hostedAppDomain).toBe("mtcode.munimtech.com");
+    expect(resolveMobileDistroIdentity("munim").hostedAppDomain).toBeUndefined();
   });
 
   it("uses the Munim Expo project for OTA updates", () => {
