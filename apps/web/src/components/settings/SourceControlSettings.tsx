@@ -519,48 +519,6 @@ export function SourceControlSettingsPanel() {
         project.environmentId === environmentId &&
         project.repositoryIdentity?.provider === "github",
     ) ?? null;
-  const canCheckStacks =
-    environment?.serverConfig?.environment.capabilities.pullRequestStacks === true &&
-    githubProject !== null;
-  const stackCapabilityKnown = environment?.serverConfig != null;
-  const localStack = useEnvironmentQuery(
-    canCheckStacks
-      ? pullRequestEnvironment.stackCurrent({
-          environmentId: githubProject.environmentId,
-          input: { cwd: githubProject.workspaceRoot },
-        })
-      : null,
-  );
-  const remoteStacks = useEnvironmentQuery(
-    canCheckStacks
-      ? pullRequestEnvironment.stackList({
-          environmentId: githubProject.environmentId,
-          input: { projectId: githubProject.id },
-        })
-      : null,
-  );
-  let stackSupportMessage = "Checking stack support...";
-  if (githubProject === null) {
-    stackSupportMessage = "Open a GitHub project to check stack support.";
-  } else if (!stackCapabilityKnown) {
-    stackSupportMessage = "Checking stack support...";
-  } else if (!canCheckStacks) {
-    stackSupportMessage = "This T3 server does not support stacked pull requests.";
-  } else if (localStack.data?.availability === "extension_missing") {
-    stackSupportMessage = "Install GitHub Stack: gh extension install github/gh-stack";
-  } else if (
-    localStack.data?.availability === "unsupported" ||
-    remoteStacks.data?.availability === "unsupported"
-  ) {
-    stackSupportMessage = `${githubProject.title} does not support GitHub stacks.`;
-  } else if (
-    localStack.data?.availability === "available" &&
-    remoteStacks.data?.availability === "available"
-  ) {
-    stackSupportMessage = `Ready for ${githubProject.title}.`;
-  } else {
-    stackSupportMessage = localStack.error ?? remoteStacks.error ?? stackSupportMessage;
-  }
   const discovery = useEnvironmentQuery(
     environmentId === null
       ? null
@@ -628,14 +586,7 @@ export function SourceControlSettingsPanel() {
               headerAction={hasVersionControlSystems ? null : scanButton}
             >
               {result.sourceControlProviders.map((item) => (
-                <DiscoveryItemRow key={`provider:${item.kind}`} item={item}>
-                  {item.kind === "github" ? (
-                    <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs">
-                      <p className="font-medium text-foreground">Stacked pull requests</p>
-                      <p className="mt-1 text-muted-foreground">{stackSupportMessage}</p>
-                    </div>
-                  ) : undefined}
-                </DiscoveryItemRow>
+                <DiscoveryItemRow key={`provider:${item.kind}`} item={item} />
               ))}
             </SettingsSection>
           ) : null}

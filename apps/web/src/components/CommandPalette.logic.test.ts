@@ -10,7 +10,6 @@ import {
   filterPinnedBrowseEntries,
   filterCommandPaletteGroups,
   reduceCommandPaletteUiState,
-  resolveCurrentStackContext,
   type CommandPaletteGroup,
 } from "./CommandPalette.logic";
 
@@ -234,25 +233,6 @@ function makeThread(overrides: Partial<Thread> = {}): Omit<Thread, "goal"> & {
         : null,
   };
 }
-
-describe("resolveCurrentStackContext", () => {
-  it("uses the project from the active environment when project ids collide", () => {
-    const remoteEnvironmentId = EnvironmentId.make("environment-remote");
-    const context = resolveCurrentStackContext({
-      projects: [
-        { environmentId: LOCAL_ENVIRONMENT_ID, id: PROJECT_ID, workspaceRoot: "/local/repo" },
-        { environmentId: remoteEnvironmentId, id: PROJECT_ID, workspaceRoot: "/remote/repo" },
-      ],
-      environmentId: remoteEnvironmentId,
-      projectId: PROJECT_ID,
-      threadWorktreePath: null,
-      draftWorktreePath: null,
-    });
-
-    expect(context.cwd).toBe("/remote/repo");
-    expect(context.project?.environmentId).toBe(remoteEnvironmentId);
-  });
-});
 
 describe("buildProjectActionItems", () => {
   it("shows the grouped display name but keeps the real title for icons", () => {

@@ -49,7 +49,6 @@ import {
   FolderPlusIcon,
   GitPullRequestArrowIcon,
   LinkIcon,
-  LayersIcon,
   MessageSquareIcon,
   PaletteIcon,
   PlusIcon,
@@ -133,7 +132,6 @@ import {
   isWindowsPlatform,
   newProjectId,
 } from "../lib/utils";
-import { requestAddStackStep } from "../gitStackActionBus";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { SshPasswordRequestDialog, useSshPasswordRequest } from "./SshPasswordRequestDialog";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../threadRoutes";
@@ -163,7 +161,6 @@ import {
   ITEM_ICON_CLASS,
   RECENT_THREAD_LIMIT,
   reduceCommandPaletteUiState,
-  resolveCurrentStackContext,
   type SearchOverlayMode,
 } from "./CommandPalette.logic";
 import { orderItemsByPreferredIds, sortLogicalProjectsForSidebar } from "./Sidebar.logic";
@@ -632,9 +629,6 @@ function OpenCommandPaletteDialog(props: {
   const cloneRepository = useAtomCommand(sourceControlEnvironment.cloneRepository, {
     reportFailure: false,
   });
-  const runStackAction = useAtomCommand(pullRequestEnvironment.runStackAction, {
-    reportFailure: false,
-  });
   const { environments } = useEnvironments();
   const desktopLocalBootstraps = useDesktopLocalBootstraps();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -985,34 +979,6 @@ function OpenCommandPaletteDialog(props: {
   const currentProjectCwd = currentProjectId
     ? (projectCwdById.get(currentProjectId) ?? null)
     : null;
-  const { project: currentProject, cwd: currentStackCwd } = resolveCurrentStackContext({
-    projects,
-    environmentId: currentProjectEnvironmentId,
-    projectId: currentProjectId,
-    threadWorktreePath: activeThread?.worktreePath ?? null,
-    draftWorktreePath: activeDraftThread?.worktreePath ?? null,
-  });
-  const currentServerConfig = useAtomValue(
-    serverEnvironment.configValueAtom(currentProjectEnvironmentId),
-  );
-  const currentStackQuery = useEnvironmentQuery(
-    currentProjectEnvironmentId !== null &&
-      currentStackCwd !== null &&
-      currentProject?.repositoryIdentity?.provider === "github" &&
-      currentServerConfig?.environment.capabilities.pullRequestStacks === true
-      ? pullRequestEnvironment.stackCurrent({
-          environmentId: currentProjectEnvironmentId,
-          input: { cwd: currentStackCwd },
-        })
-      : null,
-  );
-  const currentBranch = activeThread?.branch ?? activeDraftThread?.branch ?? null;
-  const queriedStack = currentStackQuery.data?.stack ?? null;
-  const currentStack =
-    queriedStack && (currentBranch === null || queriedStack.currentBranch === currentBranch)
-      ? queriedStack
-      : null;
-  const currentStackStep = currentStack?.steps.find((step) => step.isCurrent) ?? null;
   const currentProjectCwdForBrowse =
     browseEnvironmentId && currentProjectEnvironmentId === browseEnvironmentId
       ? currentProjectCwd
@@ -1658,77 +1624,6 @@ function OpenCommandPaletteDialog(props: {
   ]);
 
   const actionItems: Array<CommandPaletteActionItem | CommandPaletteSubmenuItem> = [];
-
-  if (currentProjectEnvironmentId && currentProject && currentStackCwd && currentStack) {
-    const runCurrentStackAction = async (action: "submit" | "sync") => {
-      const result = await runStackAction({
-        environmentId: currentProjectEnvironmentId,
-        input: { cwd: currentStackCwd, action },
-      });
-      if (result._tag === "Failure") throw squashAtomCommandFailure(result);
-      currentStackQuery.refresh();
-      toastManager.add({
-        type: "success",
-        title: action === "submit" ? "Stack shared" : "Stack refreshed",
-      });
-    };
-    const repositoryIdentity = currentProject.repositoryIdentity;
-    const currentPullRequest = currentStackStep?.pullRequest;
-
-    if (repositoryIdentity?.owner && repositoryIdentity.name && currentPullRequest) {
-      actionItems.push({
-        kind: "action",
-        value: "action:view-pull-request-stack",
-        searchTerms: ["view", "pull request", "stack", "steps"],
-        title: "View pull request stack",
-        description: `Step ${currentStackStep.position} of ${currentStack.steps.length}`,
-        icon: <LayersIcon className={ITEM_ICON_CLASS} />,
-        run: async () => {
-          await navigate({
-            to: "/pull-requests",
-            search: {
-              involvement: "all",
-              state: "all",
-              repository: `${repositoryIdentity.owner}/${repositoryIdentity.name}`,
-              number: currentPullRequest.number,
-              selectedProjectId: currentProject.id,
-              selectedEnvironmentId: currentProjectEnvironmentId,
-            },
-          });
-        },
-      });
-    }
-    actionItems.push(
-      {
-        kind: "action",
-        value: "action:add-stack-step",
-        searchTerms: ["next", "add", "pull request", "stack", "step", "branch"],
-        title: "Start next stack step...",
-        icon: <PlusIcon className={ITEM_ICON_CLASS} />,
-        run: async () =>
-          requestAddStackStep({
-            environmentId: currentProjectEnvironmentId,
-            cwd: currentStackCwd,
-          }),
-      },
-      {
-        kind: "action",
-        value: "action:submit-stack",
-        searchTerms: ["share", "submit", "push", "pull request", "stack"],
-        title: "Share pull request stack",
-        icon: <CloudUploadIcon className={ITEM_ICON_CLASS} />,
-        run: () => runCurrentStackAction("submit"),
-      },
-      {
-        kind: "action",
-        value: "action:sync-stack",
-        searchTerms: ["refresh", "sync", "update", "pull request", "stack"],
-        title: "Refresh pull request stack",
-        icon: <RefreshCwIcon className={ITEM_ICON_CLASS} />,
-        run: () => runCurrentStackAction("sync"),
-      },
-    );
-  }
 
   actionItems.push({
     kind: "action",

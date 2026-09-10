@@ -9,7 +9,6 @@ import { sourceControlEnvironment } from "./sourceControl";
 import { useVcsActionState } from "./use-vcs-action-state";
 import { useThreadSelection } from "./use-thread-selection";
 import { useSelectedThreadWorktree } from "./use-selected-thread-worktree";
-import { pullRequestEnvironment } from "./pullRequests";
 import { serverEnvironment } from "./server";
 
 export function useSelectedThreadGitState() {
@@ -35,17 +34,6 @@ export function useSelectedThreadGitState() {
           input: {},
         }),
   );
-  const pullRequestStack = useEnvironmentQuery(
-    selectedThread !== null &&
-      selectedThreadCwd !== null &&
-      selectedThreadProject?.repositoryIdentity?.provider === "github" &&
-      serverConfig?.environment.capabilities.pullRequestStacks === true
-      ? pullRequestEnvironment.stackCurrent({
-          environmentId: selectedThread.environmentId,
-          input: { cwd: selectedThreadCwd },
-        })
-      : null,
-  );
 
   const selectedThreadBranchTarget = useMemo(
     () => ({
@@ -67,7 +55,6 @@ export function useSelectedThreadGitState() {
   return {
     gitOperationLabel: gitActionState.currentLabel,
     sourceControlDiscovery,
-    pullRequestStack,
     selectedThreadBranches,
     selectedThreadBranchesLoading: selectedThreadBranchState.isPending,
   };

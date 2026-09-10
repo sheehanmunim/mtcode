@@ -9071,7 +9071,6 @@ export default function ChatView(props: ChatViewProps) {
             activeThreadTitle={activeThread.title}
             isServerThread={isServerThread}
             activeProject={activeProject}
-            activeProjectRepository={threadRepository ?? undefined}
             openInCwd={gitCwd}
             activeProjectScripts={activeProjectScripts}
             preferredScriptId={

@@ -28,7 +28,6 @@ export * from "./git.ts";
 export * from "./vcs.ts";
 export * from "./sourceControl.ts";
 export * from "./pullRequest.ts";
-export * from "./pullRequestStack.ts";
 export * from "./orchestration.ts";
 export * from "./messageCorrection.ts";
 export * from "./t3ProjectFile.ts";

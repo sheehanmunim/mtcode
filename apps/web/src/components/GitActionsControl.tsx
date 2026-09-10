@@ -8,7 +8,6 @@ import type {
   GitActionProgressEvent,
   GitRunStackedActionResult,
   GitStackedAction,
-  PullRequestStackAction,
   SourceControlCloneProtocol,
   SourceControlProviderDiscoveryItem,
   SourceControlProviderKind,
@@ -38,10 +37,6 @@ import {
   InfoIcon,
   LockIcon,
   GlobeIcon,
-  LayersIcon,
-  PlusIcon,
-  RefreshCwIcon,
-  UnlinkIcon,
 } from "lucide-react";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { AzureDevOpsIcon, BitbucketIcon, GitHubIcon, GitLabIcon } from "~/components/Icons";
@@ -50,12 +45,8 @@ import { Spinner } from "~/components/ui/spinner";
 import { toggleVariants } from "~/components/ui/toggle";
 import { cn } from "~/lib/utils";
 import {
-  areGitControlsBusy,
   buildGitActionProgressStages,
   buildMenuItems,
-  canUsePullRequestStackActions,
-  adaptMenuItemsForStack,
-  adaptQuickActionForStack,
   type GitActionIconName,
   type GitActionMenuItem,
   type GitQuickAction,
@@ -63,12 +54,9 @@ import {
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActionDialogCopy,
   resolveLiveThreadBranchUpdate,
-  prepareGitActionForStackSubmit,
   resolveThreadBranchMetadataPatch,
   resolveQuickAction,
   resolveThreadBranchUpdate,
-  runWithPendingState,
-  shouldSubmitStackAfterGitAction,
 } from "./GitActionsControl.logic";
 import { WizardPopup, WizardHeader, WizardSteps, WizardPanel, WizardFooter } from "./ui/wizard";
 import { StartTruncatedPath } from "./StartTruncatedPath";
@@ -85,7 +73,7 @@ import {
 } from "~/components/ui/dialog";
 import { Group, GroupSeparator } from "~/components/ui/group";
 import { Input } from "~/components/ui/input";
-import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "~/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "~/components/ui/menu";
 import { Popover, PopoverPopup, PopoverTrigger } from "~/components/ui/popover";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Textarea } from "~/components/ui/textarea";
@@ -103,7 +91,6 @@ import { useThreadShell } from "~/state/entities";
 import { useEnvironmentQuery } from "~/state/query";
 import { serverEnvironment } from "~/state/server";
 import { sourceControlEnvironment } from "~/state/sourceControl";
-import { pullRequestEnvironment } from "~/state/pullRequests";
 import { threadEnvironment } from "~/state/threads";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { vcsEnvironment } from "~/state/vcs";
@@ -111,15 +98,12 @@ import { randomUUID } from "~/lib/utils";
 import { resolvePathLinkTarget } from "~/terminal-links";
 import { type DraftId, useComposerDraftStore } from "~/composerDraftStore";
 import { getSourceControlPresentation } from "~/sourceControlPresentation";
-import { useOpenPrLink } from "~/lib/openPullRequestLink";
-import { onAddStackStep } from "~/gitStackActionBus";
-import { PullRequestStackPicker } from "./pullRequest/PullRequestStackPicker";
-import { SshPasswordRequestDialog, useSshPasswordRequest } from "./SshPasswordRequestDialog";
 import { useOpenLink } from "~/browser/useOpenLink";
+import { useOpenPrLink } from "~/lib/openPullRequestLink";
+import { SshPasswordRequestDialog, useSshPasswordRequest } from "./SshPasswordRequestDialog";
 
 interface GitActionsControlProps {
   gitCwd: string | null;
-  repository: string | undefined;
   activeThreadRef: ScopedThreadRef | null;
   draftId?: DraftId;
   /**
@@ -186,13 +170,6 @@ function requestVcsStatusRefresh(
   void refresh({ environmentId, input: { cwd } });
 }
 const RUNNING_SOURCE_CONTROL_ACTIONS = ["runStackedAction", "pull", "publishRepository"] as const;
-const STACK_ACTION_SUCCESS_LABELS: Record<PullRequestStackAction, string> = {
-  start: "Stack started",
-  add_step: "Stack step added",
-  submit: "Stack submitted",
-  sync: "Stack synced",
-  unstack: "Pull requests unstacked",
-};
 
 const PUBLISH_PROVIDER_OPTIONS = [
   {
@@ -968,7 +945,6 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
 
 export default function GitActionsControl({
   gitCwd,
-  repository,
   activeThreadRef,
   draftId,
   onOpenPullRequest,
@@ -1003,9 +979,6 @@ export default function GitActionsControl({
   const [excludedFiles, setExcludedFiles] = useState<ReadonlySet<string>>(new Set());
   const [isEditingFiles, setIsEditingFiles] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [stackDialog, setStackDialog] = useState<"add" | "unstack" | null>(null);
-  const [stackBranch, setStackBranch] = useState("");
-  const [stackActionPending, setStackActionPending] = useState(false);
   const [pendingDefaultBranchAction, setPendingDefaultBranchAction] =
     useState<PendingDefaultBranchAction | null>(null);
   const {
@@ -1104,29 +1077,6 @@ export default function GitActionsControl({
     reportFailure: false,
   });
   const { data: gitStatus, error: gitStatusError } = gitStatusQuery;
-  const stackQuery = useEnvironmentQuery(
-    activeEnvironmentId !== null &&
-      gitCwd !== null &&
-      serverConfig?.environment.capabilities.pullRequestStacks === true &&
-      gitStatus?.sourceControlProvider?.kind === "github"
-      ? pullRequestEnvironment.stackCurrent({
-          environmentId: activeEnvironmentId,
-          input: { cwd: gitCwd },
-        })
-      : null,
-  );
-  const queriedStack = stackQuery.data?.stack ?? null;
-  const currentStack = queriedStack?.currentBranch === gitStatus?.refName ? queriedStack : null;
-  useEffect(
-    () =>
-      onAddStackStep((target) => {
-        if (currentStack && target.environmentId === activeEnvironmentId && target.cwd === gitCwd) {
-          setStackBranch("");
-          setStackDialog("add");
-        }
-      }),
-    [activeEnvironmentId, currentStack, gitCwd],
-  );
   const sourceControlPresentation = useMemo(
     () => getSourceControlPresentation(gitStatus?.sourceControlProvider),
     [gitStatus?.sourceControlProvider],
@@ -1144,28 +1094,16 @@ export default function GitActionsControl({
   const noneSelected = selectedFiles.length === 0;
 
   const initAction = useVcsInitAction(sourceControlScope);
-  const runStackAction = useAtomCommand(pullRequestEnvironment.runStackAction, {
-    reportFailure: false,
-  });
   const runImmediateGitAction = useGitStackedAction(sourceControlScope);
   const pullAction = useVcsPullAction(sourceControlScope);
   const isGitActionRunning = useSourceControlActionRunning(
     sourceControlScope,
     RUNNING_SOURCE_CONTROL_ACTIONS,
   );
-  const gitControlsBusy = areGitControlsBusy({
-    gitActionRunning: isGitActionRunning,
-    stackActionPending,
-    stackQueryPending: stackQuery.isPending,
-  });
   const isSelectingWorktreeBase =
     !activeServerThread &&
     activeDraftThread?.envMode === "worktree" &&
     activeDraftThread.worktreePath === null;
-
-  useEffect(() => {
-    stackQuery.refresh();
-  }, [gitStatus?.refName, stackQuery.refresh]);
 
   useEffect(() => {
     if (isGitActionRunning || isSelectingWorktreeBase || activeServerThread) {
@@ -1194,19 +1132,15 @@ export default function GitActionsControl({
     return gitStatusForActions?.isDefaultRef ?? false;
   }, [gitStatusForActions?.isDefaultRef]);
 
-  const gitActionMenuItems = useMemo(() => {
-    const items = buildMenuItems(gitStatusForActions, gitControlsBusy, hasPrimaryRemote);
-    return currentStack === null ? items : adaptMenuItemsForStack(items);
-  }, [currentStack, gitControlsBusy, gitStatusForActions, hasPrimaryRemote]);
-  const quickAction = useMemo(() => {
-    const action = resolveQuickAction(
-      gitStatusForActions,
-      gitControlsBusy,
-      isDefaultRef,
-      hasPrimaryRemote,
-    );
-    return currentStack === null ? action : adaptQuickActionForStack(action);
-  }, [currentStack, gitControlsBusy, gitStatusForActions, hasPrimaryRemote, isDefaultRef]);
+  const gitActionMenuItems = useMemo(
+    () => buildMenuItems(gitStatusForActions, isGitActionRunning, hasPrimaryRemote),
+    [gitStatusForActions, hasPrimaryRemote, isGitActionRunning],
+  );
+  const quickAction = useMemo(
+    () =>
+      resolveQuickAction(gitStatusForActions, isGitActionRunning, isDefaultRef, hasPrimaryRemote),
+    [gitStatusForActions, hasPrimaryRemote, isDefaultRef, isGitActionRunning],
+  );
   const quickActionDisabledReason = quickAction.disabled
     ? (quickAction.hint ?? "This action is currently unavailable.")
     : null;
@@ -1264,63 +1198,6 @@ export default function GitActionsControl({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [activeEnvironmentId, gitCwd, refreshVcsStatus]);
-
-  const executeStackAction = useCallback(
-    async (action: PullRequestStackAction, branch?: string) => {
-      if (activeEnvironmentId === null || gitCwd === null) return null;
-      const result = await runStackAction({
-        environmentId: activeEnvironmentId,
-        input: {
-          cwd: gitCwd,
-          action,
-          ...(branch === undefined ? {} : { branch }),
-        },
-      });
-      if (result._tag === "Success") {
-        const nextBranch = result.value.stack?.currentBranch;
-        if (nextBranch !== undefined) persistThreadBranchSync(nextBranch);
-        stackQuery.refresh();
-        requestVcsStatusRefresh(refreshVcsStatus, activeEnvironmentId, gitCwd);
-      }
-      return result;
-    },
-    [
-      activeEnvironmentId,
-      gitCwd,
-      persistThreadBranchSync,
-      refreshVcsStatus,
-      runStackAction,
-      stackQuery.refresh,
-    ],
-  );
-
-  const performStackAction = async (action: PullRequestStackAction, branch?: string) => {
-    if (stackActionPending) return;
-    const toastId = toastManager.add({
-      type: "loading",
-      title: action === "sync" ? "Syncing stack..." : "Updating stack...",
-      timeout: 0,
-      data: threadToastData,
-    });
-    const result = await runWithPendingState(setStackActionPending, () =>
-      executeStackAction(action, branch),
-    );
-    if (result === null || result._tag === "Failure") {
-      const error = result === null ? null : squashAtomCommandFailure(result);
-      toastManager.update(toastId, {
-        type: "error",
-        title: "Stack action failed",
-        description: error instanceof Error ? error.message : "GitHub could not update this stack.",
-        data: threadToastData,
-      });
-      return;
-    }
-    toastManager.update(toastId, {
-      type: "success",
-      title: STACK_ACTION_SUCCESS_LABELS[action],
-      data: threadToastData,
-    });
-  };
 
   const openExistingPr = useCallback(async () => {
     const openPr = gitStatusForActions?.pr?.state === "open" ? gitStatusForActions.pr : null;
@@ -1396,11 +1273,8 @@ export default function GitActionsControl({
       }
       onConfirmed?.();
 
-      const shouldSubmitStack =
-        currentStack !== null && !featureBranch && shouldSubmitStackAfterGitAction(action);
-      const gitAction = shouldSubmitStack ? prepareGitActionForStackSubmit(action) : action;
       const progressStages = buildGitActionProgressStages({
-        action: gitAction,
+        action,
         hasCustomCommitMessage: !!commitMessage?.trim(),
         hasWorkingTreeChanges: !!actionStatus?.hasWorkingTreeChanges,
         featureBranch,
@@ -1494,8 +1368,6 @@ export default function GitActionsControl({
             // Let the settled mutation publish the error toast to avoid a
             // transient intermediate state before the final failure message.
             return;
-          case "ssh_password_prompt":
-            return;
         }
 
         updateActiveProgressToast();
@@ -1503,7 +1375,7 @@ export default function GitActionsControl({
 
       const result = await runImmediateGitAction.run({
         actionId,
-        action: gitAction,
+        action,
         ...(commitMessage ? { commitMessage } : {}),
         ...(featureBranch ? { featureBranch } : {}),
         ...(filePaths ? { filePaths } : {}),
@@ -1536,30 +1408,6 @@ export default function GitActionsControl({
       }
 
       const actionResult = result.value;
-      if (shouldSubmitStack) {
-        toastManager.update(resolvedProgressToastId, {
-          type: "loading",
-          title: "Submitting stack...",
-          description: "Pushing every stack branch and updating its pull requests.",
-          timeout: 0,
-          data: scopedToastData,
-        });
-        const stackResult = await runWithPendingState(setStackActionPending, () =>
-          executeStackAction("submit"),
-        );
-        if (stackResult === null || stackResult._tag === "Failure") {
-          const error = stackResult === null ? null : squashAtomCommandFailure(stackResult);
-          toastManager.update(resolvedProgressToastId, {
-            type: "error",
-            title: "Changes saved, but stack submit failed",
-            description:
-              error instanceof Error ? error.message : "GitHub could not submit this stack.",
-            timeout: 0,
-            data: scopedToastData,
-          });
-          return;
-        }
-      }
       syncThreadBranchAfterGitAction(actionResult);
       const closeResultToast = () => {
         toastManager.close(resolvedProgressToastId);
@@ -1570,7 +1418,7 @@ export default function GitActionsControl({
         children: string;
         onClick: (event: MouseEvent<HTMLButtonElement>) => void;
       } | null = null;
-      if (!shouldSubmitStack && toastCta.kind === "run_action") {
+      if (toastCta.kind === "run_action") {
         toastActionProps = {
           children: toastCta.label,
           onClick: () => {
@@ -1580,7 +1428,7 @@ export default function GitActionsControl({
             });
           },
         };
-      } else if (!shouldSubmitStack && toastCta.kind === "open_pr") {
+      } else if (toastCta.kind === "open_pr") {
         toastActionProps = {
           children: toastCta.label,
           onClick: (event) => {
@@ -1600,10 +1448,8 @@ export default function GitActionsControl({
           resolvedProgressToastId,
           stackedThreadToast({
             type: "success",
-            title: shouldSubmitStack ? "Stack submitted" : actionResult.toast.title,
-            description: shouldSubmitStack
-              ? "Branches pushed. Pull requests updated."
-              : actionResult.toast.description,
+            title: actionResult.toast.title,
+            description: actionResult.toast.description,
             timeout: 0,
             actionProps: toastActionProps,
             data: successToastData,
@@ -1612,10 +1458,8 @@ export default function GitActionsControl({
       } else {
         toastManager.update(resolvedProgressToastId, {
           type: "success",
-          title: shouldSubmitStack ? "Stack submitted" : actionResult.toast.title,
-          description: shouldSubmitStack
-            ? "Branches pushed. Pull requests updated."
-            : actionResult.toast.description,
+          title: actionResult.toast.title,
+          description: actionResult.toast.description,
           timeout: 0,
           data: successToastData,
         });
@@ -1831,14 +1675,6 @@ export default function GitActionsControl({
         </Button>
       ) : (
         <Group aria-label="Git actions" className="shrink-0">
-          {currentStack && repository ? (
-            <PullRequestStackPicker
-              kind="local"
-              repository={repository}
-              stack={currentStack}
-              {...(onOpenPullRequest === undefined ? {} : { onSelect: onOpenPullRequest })}
-            />
-          ) : null}
           {quickActionDisabledReason ? (
             <Popover>
               <PopoverTrigger
@@ -1869,7 +1705,7 @@ export default function GitActionsControl({
               variant="outline"
               size="xs"
               className="ps-[8.5px]"
-              disabled={gitControlsBusy || quickAction.disabled}
+              disabled={isGitActionRunning || quickAction.disabled}
               onClick={runQuickAction}
             >
               <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
@@ -1888,7 +1724,7 @@ export default function GitActionsControl({
           >
             <MenuTrigger
               render={<Button aria-label="Git action options" size="icon-xs" variant="outline" />}
-              disabled={gitControlsBusy}
+              disabled={isGitActionRunning}
             >
               <ChevronDownIcon aria-hidden="true" className="size-4" />
             </MenuTrigger>
@@ -1897,7 +1733,7 @@ export default function GitActionsControl({
                 const disabledReason = getMenuActionDisabledReason({
                   item,
                   gitStatus: gitStatusForActions,
-                  isBusy: gitControlsBusy,
+                  isBusy: isGitActionRunning,
                   hasPrimaryRemote,
                 });
                 if (item.disabled && disabledReason) {
@@ -1936,74 +1772,9 @@ export default function GitActionsControl({
                   </MenuItem>
                 );
               })}
-              {stackQuery.data?.availability === "extension_missing" ? (
-                <>
-                  <MenuSeparator />
-                  <p className="max-w-72 px-2 py-1.5 text-xs text-muted-foreground">
-                    To use stacked PRs, install GitHub Stack:
-                    <code className="mt-1 block select-all text-foreground">
-                      gh extension install github/gh-stack
-                    </code>
-                  </p>
-                </>
-              ) : gitStatusForActions?.sourceControlProvider?.kind === "github" &&
-                serverConfig?.environment.capabilities.pullRequestStacks === true &&
-                canUsePullRequestStackActions(stackQuery.data?.availability) ? (
-                <>
-                  <MenuSeparator />
-                  {currentStack === null ? (
-                    <MenuItem
-                      disabled={
-                        stackActionPending || gitStatusForActions.refName === null || isDefaultRef
-                      }
-                      onClick={() => {
-                        const branch = gitStatusForActions.refName;
-                        if (branch !== null) void performStackAction("start", branch);
-                      }}
-                    >
-                      <LayersIcon className="size-3.5" />
-                      Start stack with this branch
-                    </MenuItem>
-                  ) : (
-                    <>
-                      <MenuItem
-                        disabled={stackActionPending}
-                        onClick={() => void performStackAction("submit")}
-                      >
-                        <CloudUploadIcon className="size-3.5" />
-                        Submit stack
-                      </MenuItem>
-                      <MenuItem
-                        disabled={stackActionPending}
-                        onClick={() => void performStackAction("sync")}
-                      >
-                        <RefreshCwIcon className="size-3.5" />
-                        Sync stack
-                      </MenuItem>
-                      <MenuItem
-                        disabled={stackActionPending}
-                        onClick={() => {
-                          setStackBranch("");
-                          setStackDialog("add");
-                        }}
-                      >
-                        <PlusIcon className="size-3.5" />
-                        Add next stack step...
-                      </MenuItem>
-                      <MenuItem
-                        disabled={stackActionPending}
-                        onClick={() => setStackDialog("unstack")}
-                      >
-                        <UnlinkIcon className="size-3.5" />
-                        Unstack pull requests...
-                      </MenuItem>
-                    </>
-                  )}
-                </>
-              ) : null}
               {canPublishRepository ? (
                 <MenuItem
-                  disabled={gitControlsBusy}
+                  disabled={isGitActionRunning}
                   onClick={() => {
                     setIsPublishDialogOpen(true);
                   }}
@@ -2219,84 +1990,6 @@ export default function GitActionsControl({
           onRemove={(requestId) => resolveGitSshPasswordPrompt(requestId, null)}
         />
       ) : null}
-
-      <Dialog
-        open={stackDialog === "add"}
-        onOpenChange={(open) => {
-          if (!open) setStackDialog(null);
-        }}
-      >
-        <DialogPopup>
-          <DialogHeader>
-            <DialogTitle>Add the next stack step</DialogTitle>
-            <DialogDescription>
-              T3 will create this branch on top of the current step and switch to it.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogPanel>
-            <Input
-              autoFocus
-              value={stackBranch}
-              placeholder="feature/next-step"
-              aria-label="New stack branch"
-              onChange={(event) => setStackBranch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" || stackBranch.trim().length === 0) return;
-                const branch = stackBranch.trim();
-                setStackDialog(null);
-                void performStackAction("add_step", branch);
-              }}
-            />
-          </DialogPanel>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setStackDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              disabled={stackBranch.trim().length === 0 || stackActionPending}
-              onClick={() => {
-                const branch = stackBranch.trim();
-                setStackDialog(null);
-                void performStackAction("add_step", branch);
-              }}
-            >
-              Add step
-            </Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
-
-      <Dialog
-        open={stackDialog === "unstack"}
-        onOpenChange={(open) => {
-          if (!open) setStackDialog(null);
-        }}
-      >
-        <DialogPopup>
-          <DialogHeader>
-            <DialogTitle>Unstack these pull requests?</DialogTitle>
-            <DialogDescription>
-              This removes the stack link. It does not delete branches or pull requests.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setStackDialog(null)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              disabled={stackActionPending}
-              onClick={() => {
-                setStackDialog(null);
-                void performStackAction("unstack");
-              }}
-            >
-              Unstack
-            </Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
 
       <Dialog
         open={pendingDefaultBranchAction !== null}

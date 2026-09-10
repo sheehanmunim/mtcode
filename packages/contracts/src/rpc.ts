@@ -147,17 +147,6 @@ import {
   PullRequestUpdateInput,
 } from "./pullRequest.ts";
 import {
-  PullRequestStackActionInput,
-  PullRequestStackActionResult,
-  PullRequestStackCurrentInput,
-  PullRequestStackCurrentResult,
-  PullRequestStackError,
-  PullRequestStackListInput,
-  PullRequestStackListResult,
-  PullRequestStackMergeInput,
-  PullRequestStackMergeResult,
-} from "./pullRequestStack.ts";
-import {
   RelayClientInstallFailedError,
   RelayClientInstallProgressEventSchema,
   RelayClientStatusSchema,
@@ -476,10 +465,6 @@ export const WS_METHODS = {
   pullRequestsSetLabels: "pullRequests.setLabels",
 
   // Pull request stack methods
-  pullRequestStacksList: "pullRequestStacks.list",
-  pullRequestStacksCurrent: "pullRequestStacks.current",
-  pullRequestStacksRunAction: "pullRequestStacks.runAction",
-  pullRequestStacksMerge: "pullRequestStacks.merge",
 
   // Source control methods
   sourceControlLookupRepository: "sourceControl.lookupRepository",
@@ -1022,35 +1007,6 @@ const WsPullRequestsRequestReviewersRpc = Rpc.make(WS_METHODS.pullRequestsReques
   payload: PullRequestReviewerRequestInput,
   success: Schema.Void,
   error: PullRequestRpcError,
-});
-
-const PullRequestStackRpcError = Schema.Union([
-  PullRequestStackError,
-  EnvironmentAuthorizationError,
-]);
-
-export const WsPullRequestStacksListRpc = Rpc.make(WS_METHODS.pullRequestStacksList, {
-  payload: PullRequestStackListInput,
-  success: PullRequestStackListResult,
-  error: PullRequestStackRpcError,
-});
-
-export const WsPullRequestStacksCurrentRpc = Rpc.make(WS_METHODS.pullRequestStacksCurrent, {
-  payload: PullRequestStackCurrentInput,
-  success: PullRequestStackCurrentResult,
-  error: PullRequestStackRpcError,
-});
-
-export const WsPullRequestStacksRunActionRpc = Rpc.make(WS_METHODS.pullRequestStacksRunAction, {
-  payload: PullRequestStackActionInput,
-  success: PullRequestStackActionResult,
-  error: PullRequestStackRpcError,
-});
-
-export const WsPullRequestStacksMergeRpc = Rpc.make(WS_METHODS.pullRequestStacksMerge, {
-  payload: PullRequestStackMergeInput,
-  success: PullRequestStackMergeResult,
-  error: PullRequestStackRpcError,
 });
 
 /** Read when the label menu opens, for the same reason the reviewer candidates are. */
@@ -1688,10 +1644,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsSubscribeRefreshesRpc,
   WsPullRequestsReviewerCandidatesRpc,
   WsPullRequestsRequestReviewersRpc,
-  WsPullRequestStacksListRpc,
-  WsPullRequestStacksCurrentRpc,
-  WsPullRequestStacksRunActionRpc,
-  WsPullRequestStacksMergeRpc,
   WsPullRequestsLabelCandidatesRpc,
   WsPullRequestsSetLabelsRpc,
   WsSourceControlLookupRepositoryRpc,

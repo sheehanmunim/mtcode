@@ -14,9 +14,6 @@
   <a aria-label="App is free to use" href="https://github.com/munimtechnologies/mtcode/blob/main/LICENSE" target="_blank">
     <img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-success.svg?style=flat-square&color=33CC12" />
   </a>
-  <a aria-label="downloads per month" href="https://github.com/munimtechnologies/mtcode/releases" target="_blank">
-    <img alt="Downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmunimtechnologies%2Fmtcode%2Fbadges%2Fdownloads-monthly.json&style=flat-square" />
-  </a>
   <a aria-label="total downloads" href="https://github.com/munimtechnologies/mtcode/releases" target="_blank">
     <img alt="Total Downloads" src="https://img.shields.io/github/downloads/munimtechnologies/mtcode/total?style=flat-square&labelColor=gray&color=0066CC&label=Total%20Downloads" />
   </a>

@@ -11,8 +11,6 @@ import type {
   PullRequestListStatsInput,
   PullRequestRankInput,
   PullRequestRef,
-  PullRequestStackListInput,
-  PullRequestStackSummary,
   PullRequestSummary,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
@@ -160,10 +158,6 @@ const usePullRequestStatsQuery = createMergedEnvironmentQuery(
   pullRequestEnvironment.listStats,
 );
 
-const usePullRequestStacksQuery = createMergedEnvironmentQuery(
-  "web-pull-request-stacks:list",
-  pullRequestEnvironment.stackList,
-);
 const usePullRequestTurnRefreshQuery = createMergedEnvironmentQuery(
   "web-pull-requests:turn-refreshes",
   ({ environmentId }: EnvironmentQueryTarget<Readonly<Record<string, never>>>) =>
@@ -261,27 +255,4 @@ export function usePullRequestListStats(
     [query.values],
   );
   return { stats, isPending: query.isPending, refresh: query.refresh };
-}
-
-export interface EnvironmentPullRequestStack extends PullRequestStackSummary {
-  readonly environmentId: EnvironmentId;
-  readonly projectId: ProjectId;
-}
-
-export function usePullRequestStacks(
-  targets: ReadonlyArray<EnvironmentQueryTarget<PullRequestStackListInput>>,
-) {
-  const query = usePullRequestStacksQuery(targets);
-  const stacks = useMemo(
-    () =>
-      query.values.flatMap(([target, result]) =>
-        result.stacks.map((stack) => ({
-          ...stack,
-          environmentId: target.environmentId,
-          projectId: target.input.projectId,
-        })),
-      ),
-    [query.values],
-  );
-  return { stacks, error: query.error, isPending: query.isPending, refresh: query.refresh };
 }

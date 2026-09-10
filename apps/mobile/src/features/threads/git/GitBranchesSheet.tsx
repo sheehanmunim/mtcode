@@ -19,7 +19,6 @@ import { SheetActionButton } from "./gitSheetComponents";
 type GitBranchesSheetProps = StaticScreenProps<{
   readonly environmentId: string;
   readonly threadId: string;
-  readonly stackMode?: "add";
 }>;
 
 export function GitBranchesSheet(props: GitBranchesSheetProps) {
@@ -44,7 +43,6 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
   const availableBranches = gitState.selectedThreadBranches;
   const branchesLoading = gitState.selectedThreadBranchesLoading;
   const busy = gitState.gitOperationLabel !== null;
-  const addsStackStep = props.route.params.stackMode === "add";
 
   const [newBranchName, setNewBranchName] = useState("");
   const [worktreeBaseBranch, setWorktreeBaseBranch] = useState(
@@ -63,10 +61,7 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
   return (
     <View collapsable={false} className="flex-1 bg-sheet">
       {Platform.OS === "android" ? (
-        <AndroidSheetHeader
-          title={addsStackStep ? "Add stack step" : "Branches & worktrees"}
-          onBack={() => navigation.goBack()}
-        />
+        <AndroidSheetHeader title="Branches & worktrees" onBack={() => navigation.goBack()} />
       ) : null}
       <ScrollView
         className="flex-1"
@@ -76,7 +71,7 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
       >
         <View className="gap-2 rounded-[18px] border border-border bg-card px-4 py-4">
           <Text className="text-foreground-secondary text-2xs font-t3-bold tracking-[1px] uppercase">
-            {addsStackStep ? "Next stack step" : "New branch"}
+            {"New branch"}
           </Text>
           <TextInput
             value={newBranchName}
@@ -86,22 +81,15 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
           />
           <SheetActionButton
             icon="plus"
-            label={addsStackStep ? "Add to stack" : "Create & checkout"}
+            label="Create & checkout"
             tone="primary"
             disabled={busy || newBranchName.trim().length === 0}
             onPress={() => {
               const branch = sanitizeFeatureBranchName(newBranchName.trim());
               if (branch.length === 0) return;
-              const create = addsStackStep
-                ? gitActions.onRunSelectedThreadStackAction("add_step", branch)
-                : gitActions.onCreateSelectedThreadBranch(branch);
+              const create = gitActions.onCreateSelectedThreadBranch(branch);
               void create.then((result) => {
-                if (
-                  !shouldCloseGitBranchesSheetAfterCreate(
-                    addsStackStep ? "stack-step" : "branch",
-                    result,
-                  )
-                ) {
+                if (!shouldCloseGitBranchesSheetAfterCreate("branch", result)) {
                   return;
                 }
                 setNewBranchName("");
@@ -111,12 +99,7 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
           />
         </View>
 
-        <View
-          className={cn(
-            "gap-2 rounded-[18px] border border-border bg-card px-4 py-4",
-            addsStackStep && "hidden",
-          )}
-        >
+        <View className={cn("gap-2 rounded-[18px] border border-border bg-card px-4 py-4")}>
           <Text className="text-foreground-secondary text-2xs font-t3-bold tracking-[1px] uppercase">
             New worktree
           </Text>
@@ -153,7 +136,7 @@ export function GitBranchesSheet(props: GitBranchesSheetProps) {
           />
         </View>
 
-        <View className={cn("gap-2", addsStackStep && "hidden")}>
+        <View className="gap-2">
           <Text className="text-foreground-secondary text-2xs font-t3-bold tracking-[1px] uppercase">
             Existing branches
           </Text>
