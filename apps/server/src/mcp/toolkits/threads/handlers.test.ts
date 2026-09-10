@@ -42,6 +42,7 @@ function makeThread(
     interactionMode: "default",
     branch: null,
     worktreePath: null,
+    pullRequests: [],
     latestTurn: null,
     createdAt: now,
     updatedAt: now,
@@ -63,6 +64,7 @@ const source = makeThread(sourceThreadId);
 const target = makeThread(targetThreadId, {
   branch: "feat/parser",
   worktreePath: "/tmp/worktree-target",
+  pullRequests: [],
   updatedAt: "2026-01-01T00:00:01.000Z",
   backgroundLiveness: "working",
 });
@@ -86,6 +88,8 @@ const invocation = {
 
 const client = McpSchema.McpServerClient.of({
   clientId: 1,
+  clientCapabilities: {},
+  clientInfo: { name: "thread-relay-test", version: "1.0.0" },
   protocolVersion: "2025-06-18",
   initializePayload: {
     protocolVersion: "2025-06-18",

@@ -73,6 +73,7 @@ describe("ThreadHandoffContent", () => {
             interactionMode: "default",
             branch: "feat/optimize-db",
             worktreePath: null,
+            pullRequests: [],
             latestTurn: null,
             createdAt: IsoDateTime.make("2026-08-15T10:00:00.000Z"),
             updatedAt: IsoDateTime.make("2026-08-15T10:00:00.000Z"),

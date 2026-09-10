@@ -41,6 +41,7 @@ function makeThread(overrides: Partial<OrchestrationThread> = {}): Orchestration
     interactionMode: "default",
     branch: null,
     worktreePath: null,
+    pullRequests: [],
     latestTurn: {
       turnId: TurnId.make("turn-1"),
       state: "interrupted",

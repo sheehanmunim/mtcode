@@ -131,6 +131,8 @@ import {
   PullRequestOperationError,
   PullRequestReactionInput,
   PullRequestRef,
+  PullRequestStack,
+  PullRequestLinkedThreadsResult,
   PullRequestSummary,
   PullRequestReviewerCandidateList,
   PullRequestReviewerRequestInput,
@@ -206,6 +208,21 @@ import {
   PreviewResizeInput,
   PreviewSessionSnapshot,
 } from "./preview.ts";
+import {
+  DeviceActionInput,
+  DeviceCloseInput,
+  DeviceConfigureInput,
+  DeviceDetail,
+  DeviceDetailInput,
+  DeviceError,
+  DeviceListInput,
+  SshDeviceHostConfig,
+  DeviceHostSummary,
+  DeviceOpenInput,
+  DeviceServiceState,
+  DeviceSession,
+  DeviceShutdownInput,
+} from "./device.ts";
 import {
   PreviewAutomationError,
   PreviewAutomationHost,
@@ -373,6 +390,16 @@ export const WS_METHODS = {
   computerViewStream: "computerView.stream",
   computerViewInput: "computerView.input",
 
+  // Device methods
+  deviceConfigure: "device.configure",
+  deviceList: "device.list",
+  deviceTestHost: "device.testHost",
+  deviceOpen: "device.open",
+  deviceClose: "device.close",
+  deviceShutdown: "device.shutdown",
+  deviceDetail: "device.detail",
+  deviceAction: "device.action",
+
   // Server meta
   serverProbe: "server.probe",
   serverGetConfig: "server.getConfig",
@@ -423,6 +450,8 @@ export const WS_METHODS = {
   pullRequestsList: "pullRequests.list",
   pullRequestsListStats: "pullRequests.listStats",
   pullRequestsSummary: "pullRequests.summary",
+  pullRequestsStack: "pullRequests.stack",
+  pullRequestsLinkedThreads: "pullRequests.linkedThreads",
   pullRequestsDetail: "pullRequests.detail",
   pullRequestsActivity: "pullRequests.activity",
   pullRequestsThreadComments: "pullRequests.threadComments",
@@ -466,6 +495,7 @@ export const WS_METHODS = {
   subscribeTerminalMetadata: "subscribeTerminalMetadata",
   subscribePreviewEvents: "subscribePreviewEvents",
   subscribeDiscoveredLocalServers: "subscribeDiscoveredLocalServers",
+  subscribeDeviceState: "subscribeDeviceState",
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
@@ -877,6 +907,18 @@ export const WsPullRequestsMergeUpstreamReleaseRpc = Rpc.make(
 const WsPullRequestsSummaryRpc = Rpc.make(WS_METHODS.pullRequestsSummary, {
   payload: PullRequestRef,
   success: PullRequestSummary,
+  error: PullRequestRpcError,
+});
+
+const WsPullRequestsStackRpc = Rpc.make(WS_METHODS.pullRequestsStack, {
+  payload: PullRequestRef,
+  success: Schema.NullOr(PullRequestStack),
+  error: PullRequestRpcError,
+});
+
+const WsPullRequestsLinkedThreadsRpc = Rpc.make(WS_METHODS.pullRequestsLinkedThreads, {
+  payload: PullRequestRef,
+  success: PullRequestLinkedThreadsResult,
   error: PullRequestRpcError,
 });
 
@@ -1398,6 +1440,59 @@ const WsSubscribeDiscoveredLocalServersRpc = Rpc.make(WS_METHODS.subscribeDiscov
   stream: true,
 });
 
+const WsDeviceTestHostRpc = Rpc.make(WS_METHODS.deviceTestHost, {
+  payload: SshDeviceHostConfig,
+  success: DeviceHostSummary,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceListRpc = Rpc.make(WS_METHODS.deviceList, {
+  payload: DeviceListInput,
+  success: DeviceServiceState,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceConfigureRpc = Rpc.make(WS_METHODS.deviceConfigure, {
+  payload: DeviceConfigureInput,
+  success: DeviceServiceState,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceOpenRpc = Rpc.make(WS_METHODS.deviceOpen, {
+  payload: DeviceOpenInput,
+  success: DeviceSession,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceCloseRpc = Rpc.make(WS_METHODS.deviceClose, {
+  payload: DeviceCloseInput,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceShutdownRpc = Rpc.make(WS_METHODS.deviceShutdown, {
+  payload: DeviceShutdownInput,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceDetailRpc = Rpc.make(WS_METHODS.deviceDetail, {
+  payload: DeviceDetailInput,
+  success: DeviceDetail,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsDeviceActionRpc = Rpc.make(WS_METHODS.deviceAction, {
+  payload: DeviceActionInput,
+  success: DeviceDetail,
+  error: Schema.Union([DeviceError, EnvironmentAuthorizationError]),
+});
+
+const WsSubscribeDeviceStateRpc = Rpc.make(WS_METHODS.subscribeDeviceState, {
+  payload: Schema.Struct({}),
+  success: DeviceServiceState,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
 const WsOrchestrationDispatchCommandRpc = Rpc.make(ORCHESTRATION_WS_METHODS.dispatchCommand, {
   payload: ClientOrchestrationCommand,
   success: OrchestrationRpcSchemas.dispatchCommand.output,
@@ -1575,6 +1670,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsPullRequestsUpstreamReleaseRpc,
   WsPullRequestsMergeUpstreamReleaseRpc,
   WsPullRequestsSummaryRpc,
+  WsPullRequestsStackRpc,
+  WsPullRequestsLinkedThreadsRpc,
   WsPullRequestsDetailRpc,
   WsPullRequestsActivityRpc,
   WsPullRequestsThreadCommentsRpc,
@@ -1658,6 +1755,15 @@ export const WsRpcGroup = RpcGroup.make(
   WsComputerViewInputRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
+  WsDeviceConfigureRpc,
+  WsDeviceListRpc,
+  WsDeviceTestHostRpc,
+  WsDeviceOpenRpc,
+  WsDeviceCloseRpc,
+  WsDeviceShutdownRpc,
+  WsDeviceDetailRpc,
+  WsDeviceActionRpc,
+  WsSubscribeDeviceStateRpc,
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,

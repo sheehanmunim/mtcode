@@ -2534,7 +2534,10 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
           ...(mcpSession || desktopMcp
             ? {
                 environment: {
-                  ...(options?.environment ?? process.env),
+                  ...McpProviderSession.withAgentDeviceEnvironment(
+                    options?.environment ?? process.env,
+                    mcpSession,
+                  ),
                   ...(mcpSession
                     ? {
                         T3_MCP_BEARER_TOKEN: mcpSession.authorizationHeader.replace(
@@ -2545,6 +2548,7 @@ export const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
                     : {}),
                 },
                 appServerArgs,
+                ...(mcpSession ? { mcpCapabilities: mcpSession.capabilities } : {}),
               }
             : {}),
         };

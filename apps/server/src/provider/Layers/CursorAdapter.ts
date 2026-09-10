@@ -602,7 +602,14 @@ export function makeCursorAdapter(
           ];
           const acp = yield* makeCursorAcpRuntime({
             cursorSettings: effectiveCursorSettings,
-            ...(options?.environment ? { environment: options.environment } : {}),
+            ...(options?.environment || mcpSession?.agentDeviceEnvironment
+              ? {
+                  environment: McpProviderSession.withAgentDeviceEnvironment(
+                    options?.environment ?? process.env,
+                    mcpSession,
+                  ),
+                }
+              : {}),
             runtimeMode: input.runtimeMode,
             ...(cursorModelSelection?.model ? { model: cursorModelSelection.model } : {}),
             childProcessSpawner,

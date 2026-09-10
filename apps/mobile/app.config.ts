@@ -88,6 +88,10 @@ const MUNIM_RELEASE_ASSETS = {
   splashIconDark: fromRepoRoot(BRAND_ASSET_PATHS.munimIosIconLightPng),
   androidAdaptiveForeground: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
   androidAdaptiveBackgroundColor: "#000000",
+  // The Munim mark is already full-bleed on black, so it needs no separate
+  // adaptive background layer and doubles as the Android splash image.
+  androidAdaptiveBackgroundImage: undefined,
+  androidSplashIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
   androidMonochromeIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
   androidNotificationIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
   androidNotificationColor: "#FFFFFF",
@@ -218,7 +222,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   updates: mobileUpdatesUrl
     ? {
-        enabled: true,
+        enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0",
         url: mobileUpdatesUrl,
         checkAutomatically: "ON_LOAD",
         fallbackToCacheTimeout: 0,
@@ -268,6 +272,9 @@ const config: ExpoConfig = {
   android: {
     icon: variant.assets.appIcon,
     package: variant.androidPackage,
+    ...(repoEnv.T3CODE_ANDROID_GOOGLE_SERVICES_FILE
+      ? { googleServicesFile: repoEnv.T3CODE_ANDROID_GOOGLE_SERVICES_FILE }
+      : {}),
     adaptiveIcon: {
       backgroundColor: variant.assets.androidAdaptiveBackgroundColor,
       ...(variant.assets.androidAdaptiveBackgroundImage
@@ -394,6 +401,10 @@ const config: ExpoConfig = {
     [
       "expo-build-properties",
       {
+        android: {
+          // Keep the supported floor explicit and covered by native notification tests.
+          minSdkVersion: 24,
+        },
         ios: {
           deploymentTarget: "18.0",
           // AppCheckCore 11.3+ includes Swift and needs module maps for these Objective-C dependencies.

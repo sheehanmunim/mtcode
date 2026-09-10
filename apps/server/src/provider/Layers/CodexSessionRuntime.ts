@@ -42,7 +42,10 @@ import * as EffectCodexSchema from "effect-codex-app-server/schema";
 import { buildCodexInitializeParams } from "./CodexProvider.ts";
 import { codexSessionAppServerArgs } from "./codexLaunchArgs.ts";
 import { expandHomePath } from "../../pathExpansion.ts";
-import { buildCodexDeveloperInstructions } from "../CodexDeveloperInstructions.ts";
+import {
+  buildCodexDeveloperInstructions,
+  type T3CodeToolAvailability,
+} from "../CodexDeveloperInstructions.ts";
 const decodeV2TurnStartResponse = Schema.decodeUnknownEffect(EffectCodexSchema.V2TurnStartResponse);
 
 const PROVIDER = ProviderDriverKind.make("codex");
@@ -90,6 +93,16 @@ export function isComputerHomeCwd(cwd: string, homeDirectory: string = NodeOS.ho
   const normalizedCwd = normalizeProjectPathForComparison(cwd);
   const normalizedHome = normalizeProjectPathForComparison(homeDirectory);
   return normalizedCwd.length > 0 && normalizedCwd === normalizedHome;
+}
+
+function configuredMcpToolAvailability(
+  appServerArgs: ReadonlyArray<string> | undefined,
+  mcpCapabilities: ReadonlySet<string> | undefined,
+): T3CodeToolAvailability {
+  if (!hasConfiguredMcpServer(appServerArgs)) return { browser: false, device: false };
+  // Callers predating the capability set attached the browser toolkit only.
+  if (mcpCapabilities === undefined) return { browser: true, device: false };
+  return { browser: mcpCapabilities.has("preview"), device: mcpCapabilities.has("device") };
 }
 
 export const CodexResumeCursorSchema = Schema.Struct({
@@ -197,6 +210,8 @@ export interface CodexSessionRuntimeOptions {
   readonly resumeCursor?: CodexResumeCursor;
   readonly requireResume?: boolean;
   readonly appServerArgs?: ReadonlyArray<string>;
+  /** Capabilities the session's `t3-code` MCP credential grants; drives the prompt blocks. */
+  readonly mcpCapabilities?: ReadonlySet<string>;
 }
 
 export interface CodexSessionRuntimeSendTurnInput {
@@ -657,7 +672,7 @@ function buildCodexCollaborationMode(input: {
   readonly model?: string;
   readonly effort?: EffectCodexSchema.V2TurnStartParams__ReasoningEffort;
   readonly computerHistoryContext?: string;
-  readonly browserToolsAvailable?: boolean;
+  readonly browserToolsAvailable?: boolean | T3CodeToolAvailability;
   readonly desktopToolsAvailable?: boolean;
   readonly computerHomeWorkspace?: boolean;
 }): EffectCodexSchema.V2TurnStartParams__CollaborationMode | undefined {
@@ -759,7 +774,7 @@ export function buildTurnStartParams(input: {
   readonly interactionMode?: ProviderInteractionMode;
   readonly computerHistoryContext?: string;
   /** Defaults to true so callers that predate the agent-access gate are unchanged. */
-  readonly browserToolsAvailable?: boolean;
+  readonly browserToolsAvailable?: boolean | T3CodeToolAvailability;
   readonly desktopToolsAvailable?: boolean;
   readonly computerHomeWorkspace?: boolean;
 }): Effect.Effect<
@@ -2713,10 +2728,13 @@ export const makeCodexSessionRuntime = (
             ...(input.effort ? { effort: input.effort } : {}),
             ...(input.interactionMode ? { interactionMode: input.interactionMode } : {}),
             ...(computerHistoryContext ? { computerHistoryContext } : {}),
-            // Derived from the session's own MCP configuration rather than the
+            // Derived from the session's own credential rather than the
             // setting, so the prompt describes the tools this turn actually
             // has even if the setting changed after the session started.
-            browserToolsAvailable: hasConfiguredMcpServerNamed(options.appServerArgs, "t3-code"),
+            browserToolsAvailable: configuredMcpToolAvailability(
+              options.appServerArgs,
+              options.mcpCapabilities,
+            ),
             desktopToolsAvailable: hasConfiguredMcpServerNamed(
               options.appServerArgs,
               DESKTOP_MCP_SERVER_NAME,

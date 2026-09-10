@@ -24,6 +24,7 @@ const completedThread: OrchestrationThread = {
   interactionMode: "default",
   branch: null,
   worktreePath: null,
+  pullRequests: [],
   latestTurn: {
     turnId,
     state: "completed",

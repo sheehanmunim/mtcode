@@ -62,6 +62,7 @@ function makeThread(input: {
     interactionMode: input.interactionMode ?? "default",
     branch: null,
     worktreePath: null,
+    pullRequests: [],
     latestTurn:
       input.latestTurn ??
       ({
@@ -154,6 +155,7 @@ function toShell(
     interactionMode: thread.interactionMode,
     branch: thread.branch,
     worktreePath: thread.worktreePath,
+    pullRequests: [],
     latestTurn: thread.latestTurn,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,

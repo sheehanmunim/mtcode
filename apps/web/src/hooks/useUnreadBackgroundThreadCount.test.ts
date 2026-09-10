@@ -29,6 +29,7 @@ function createMockThread(
     interactionMode: "default",
     branch: null,
     worktreePath: null,
+    pullRequests: [],
     latestTurn: null,
     createdAt: "2026-08-14T20:00:00.000Z",
     updatedAt: "2026-08-14T20:00:00.000Z",

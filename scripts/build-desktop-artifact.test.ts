@@ -703,7 +703,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // asar; everything else stays packed. The Claude SDK platform packages
       // and .bin shims never ship.
       assert.equal(
-        WINDOWS_SERVER_ASAR_UNPACK_GLOB,
+        WINDOWS_NATIVE_ASAR_UNPACK_GLOB,
         "{**/*.node,**/*.dll,**/*.exe,**/*.so,**/*.so.*,**/*.dylib}",
       );
       assert.deepStrictEqual(WINDOWS_SERVER_ASAR_IGNORE_GLOBS, [

@@ -1,3 +1,5 @@
+import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
+import type { CommandPaletteLinkedThreads } from "../commandPaletteBus";
 import {
   type FilesystemBrowseEntry,
   type KeybindingCommand,
@@ -37,6 +39,25 @@ export function resolveCurrentStackContext<
 
 export const ADDON_ICON_CLASS = "size-4";
 
+/** A PR's relations include archived threads that normal palette search omits. */
+export function buildLinkedThreadActionItems(
+  input: CommandPaletteLinkedThreads & {
+    query: string;
+    icon: ReactNode;
+    runThread: (thread: Pick<SidebarThreadSummary, "environmentId" | "id">) => Promise<void>;
+  },
+): CommandPaletteActionItem[] {
+  return input.threads.map((thread) => ({
+    kind: "action",
+    value: `thread:${input.environmentId}:${thread.id}`,
+    title: thread.title || "Untitled thread",
+    description: thread.archivedAt === null ? "Linked thread" : "Archived thread",
+    searchTerms: [input.query, thread.title],
+    icon: input.icon,
+    run: () => input.runThread({ environmentId: input.environmentId, id: thread.id }),
+  }));
+}
+
 export function browseInputEndPaddingClass(input: {
   readonly willCreateProjectPath: boolean;
   readonly hasHighlightedBrowseItem: boolean;
@@ -58,9 +79,13 @@ export function browseInputEndPaddingClass(input: {
  */
 export type SearchOverlayMode = "command" | "files" | "content";
 
-export interface CommandPaletteOpenIntent {
-  readonly kind: "add-project" | "new-thread-in";
-}
+export type CommandPaletteOpenIntent =
+  | { readonly kind: "add-project" | "new-thread-in" }
+  | {
+      readonly kind: "search";
+      readonly query: string;
+      readonly linkedThreads?: CommandPaletteLinkedThreads;
+    };
 
 export interface CommandPaletteUiState {
   readonly open: boolean;
@@ -71,6 +96,11 @@ export interface CommandPaletteUiState {
 export type CommandPaletteUiAction =
   | { readonly _tag: "SetOpen"; readonly open: boolean }
   | { readonly _tag: "ToggleMode"; readonly mode: SearchOverlayMode }
+  | {
+      readonly _tag: "OpenSearch";
+      readonly query: string;
+      readonly linkedThreads?: CommandPaletteLinkedThreads;
+    }
   | { readonly _tag: "OpenAddProject" }
   | { readonly _tag: "OpenNewThreadIn" }
   | { readonly _tag: "ClearOpenIntent" };
@@ -88,6 +118,16 @@ export function reduceCommandPaletteUiState(
       return state.open && state.mode === action.mode
         ? { ...state, open: false, openIntent: null }
         : { open: true, mode: action.mode, openIntent: null };
+    case "OpenSearch":
+      return {
+        open: true,
+        mode: "command",
+        openIntent: {
+          kind: "search",
+          query: action.query,
+          ...(action.linkedThreads ? { linkedThreads: action.linkedThreads } : {}),
+        },
+      };
     case "OpenAddProject":
       return { open: true, mode: "command", openIntent: { kind: "add-project" } };
     case "OpenNewThreadIn":
@@ -206,6 +246,7 @@ export type BuildThreadActionItemsThread = Pick<
   | "title"
   | "worktreePath"
 > & {
+  pullRequests?: SidebarThreadSummary["pullRequests"];
   updatedAt: string;
   latestUserMessageAt?: string | null;
   goal?: { readonly status: string } | null | undefined;
@@ -264,6 +305,7 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
         value: `thread:${thread.id}`,
         searchTerms: [
           thread.title,
+          ...threadPullRequestSearchTerms(thread),
           projectTitle ?? ``,
           thread.branch ?? ``,
           contentMatch?.snippet ?? ``,

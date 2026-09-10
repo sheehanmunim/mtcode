@@ -252,6 +252,8 @@ export const make = Effect.gen(function* () {
       sourceControlSshPasswordPrompts: true,
       providerHandoff: true,
       threadMessageCorrection: true,
+      threadPullRequests: true,
+      pullRequestStackActions: true,
       threadPullRequestLinking: true,
       environmentIcon: true,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),

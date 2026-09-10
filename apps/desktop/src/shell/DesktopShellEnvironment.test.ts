@@ -113,10 +113,12 @@ function runShellEnvironment(input: {
     const shellEnvironment = yield* DesktopShellEnvironment.DesktopShellEnvironment;
     yield* shellEnvironment.installIntoProcess;
   }).pipe(
-    Effect.provide(persistentPathLayer),
     Effect.provide(
-      DesktopShellEnvironment.layer.pipe(
-        Layer.provide(Layer.mergeAll(environmentLayer, NodeServices.layer, spawnerLayer)),
+      Layer.mergeAll(
+        persistentPathLayer,
+        DesktopShellEnvironment.layer.pipe(
+          Layer.provide(Layer.mergeAll(environmentLayer, NodeServices.layer, spawnerLayer)),
+        ),
       ),
     ),
   );
