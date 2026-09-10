@@ -901,7 +901,12 @@ const makeProviderService = Effect.fn("makeProviderService")(function* (
   const agentAccessCapabilities = Effect.fn("ProviderService.agentAccessCapabilities")(function* (
     threadId: ThreadId,
   ) {
-    const capabilities = new Set<McpInvocationContext.McpCapability>(["pull-requests"]);
+    // `thread-reference` needs no setting behind it: the `#` chip that cites
+    // another thread is always available, so its read-only tool always is too.
+    const capabilities = new Set<McpInvocationContext.McpCapability>([
+      "pull-requests",
+      "thread-reference",
+    ]);
     if (yield* agentBrowserAccessEnabled(threadId)) capabilities.add("preview");
     if (yield* agentDeviceAccessEnabled) capabilities.add("device");
     return capabilities;
