@@ -1331,6 +1331,8 @@ export interface ChatComposerProps {
 
   // Provider / model
   lockedProvider: ProviderDriverKind | null;
+  /** The environment can restart a started thread on another provider. */
+  supportsProviderHandoff: boolean;
   providerStatuses: ServerProvider[];
   /** False until the environment's server config has arrived at least once. */
   providerCatalogKnown: boolean;
@@ -1455,6 +1457,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     runtimeMode,
     interactionMode: requestedInteractionMode,
     lockedProvider,
+    supportsProviderHandoff,
     providerStatuses,
     providerCatalogKnown,
     activeProjectDefaultModelSelection,
@@ -1767,6 +1770,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         lockedProvider,
         lockedInstanceId:
           activeThread?.session?.providerInstanceId ?? activeThreadModelSelection?.instanceId,
+        handoffInstanceId: supportsProviderHandoff ? selectedProviderByThreadId : null,
       }),
     [
       activeProjectDefaultModelSelection?.instanceId,
@@ -1774,6 +1778,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       activeThreadModelSelection?.instanceId,
       selectedProviderByThreadId,
       lockedProvider,
+      supportsProviderHandoff,
       providerInstanceEntries,
     ],
   );
@@ -4361,6 +4366,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             : selectedModelForPickerWithCustomFallback
         }
         lockedProvider={lockedProvider}
+        allowHandoff={supportsProviderHandoff}
         lockedContinuationGroupKey={lockedContinuationGroupKey}
         instanceEntries={providerInstanceEntries}
         keybindings={keybindings}

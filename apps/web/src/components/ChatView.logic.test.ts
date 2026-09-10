@@ -1120,6 +1120,45 @@ describe("resolveComposerProviderSelection", () => {
     ).toBe(importedEntry.instanceId);
   });
 
+  it("hands a started thread to the provider the reader picked from the picker", () => {
+    const sessionEntry = entry("codex", "codex_work");
+    const handoffEntry = entry("claudeAgent", "claude_work");
+    const entries = [sessionEntry, handoffEntry];
+    const thread = importedThread(sessionEntry.instanceId);
+    const lockedProvider = deriveLockedProvider({
+      thread,
+      selectedProvider: handoffEntry.instanceId,
+      threadProvider: thread.modelSelection.instanceId,
+      providers: entries.map((candidate) => candidate.snapshot),
+    });
+    const input = {
+      entries,
+      candidateInstanceIds: [handoffEntry.instanceId, sessionEntry.instanceId],
+      lockedProvider,
+      lockedInstanceId: sessionEntry.instanceId,
+    } as const;
+
+    expect(lockedProvider).toBe("codex");
+    // Without the hand-off the lock wins, and the composer silently keeps the
+    // model the reader just replaced.
+    expect(resolveComposerProviderSelection(input).selectedProviderEntry?.instanceId).toBe(
+      sessionEntry.instanceId,
+    );
+    expect(
+      resolveComposerProviderSelection({
+        ...input,
+        handoffInstanceId: handoffEntry.instanceId,
+      }).selectedProviderEntry?.instanceId,
+    ).toBe(handoffEntry.instanceId);
+    // A hand-off named for a provider this environment cannot run changes nothing.
+    expect(
+      resolveComposerProviderSelection({
+        ...input,
+        handoffInstanceId: ProviderInstanceId.make("not_configured"),
+      }).selectedProviderEntry?.instanceId,
+    ).toBe(sessionEntry.instanceId);
+  });
+
   it("keeps the session driver authoritative over instance and draft selections", () => {
     const selected = entry("claudeAgent", "claude_work");
     const sessionEntry = entry("ollama", "local_models");

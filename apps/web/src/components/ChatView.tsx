@@ -2385,6 +2385,10 @@ export default function ChatView(props: ChatViewProps) {
     threadProvider,
     providers: providerStatuses,
   });
+  // Only this server can restart a started thread on another provider and replay
+  // the transcript for it; without the capability a cross-provider pick is a
+  // dead end, so the picker offers no hand-off and the composer keeps its lock.
+  const supportsProviderHandoff = serverConfig?.environment.capabilities.providerHandoff === true;
   const pullRequestsCapabilityKnown = serverConfig !== null;
   const supportsPullRequests = serverConfig?.environment.capabilities.pullRequests === true;
   const supportsThreadMessageCorrection =
@@ -8613,10 +8617,14 @@ export default function ChatView(props: ChatViewProps) {
         setIsHandoffDialogOpen(true);
         return;
       }
-      if (isCrossProvider) {
+      if (isCrossProvider && supportsProviderHandoff) {
+        // Explicit, because this is a picker write: a later seeding write from
+        // the thread's own selection would otherwise put the old provider back
+        // and the hand-off would look like it never happened.
         setComposerDraftModelSelection(
           scopeThreadRef(activeThread.environmentId, activeThread.id),
           nextModelSelection,
+          { explicit: true },
         );
         setStickyComposerModelSelection(nextModelSelection);
         scheduleComposerFocus();
@@ -8650,6 +8658,7 @@ export default function ChatView(props: ChatViewProps) {
       setComposerDraftModelSelection,
       setStickyComposerModelSelection,
       settings,
+      supportsProviderHandoff,
     ],
   );
   const onEnvModeChange = useCallback(
@@ -9322,6 +9331,7 @@ export default function ChatView(props: ChatViewProps) {
                             runtimeMode={runtimeMode}
                             interactionMode={interactionMode}
                             lockedProvider={lockedProvider}
+                            supportsProviderHandoff={supportsProviderHandoff}
                             providerStatuses={providerStatuses as ServerProvider[]}
                             providerCatalogKnown={serverConfig !== null}
                             activeProjectDefaultModelSelection={activeProjectDefaultModelSelection}

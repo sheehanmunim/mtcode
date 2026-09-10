@@ -436,6 +436,14 @@ export function resolveComposerProviderSelection(input: {
   candidateInstanceIds: ReadonlyArray<ProviderInstanceId | null | undefined>;
   lockedProvider: ProviderDriverKind | null;
   lockedInstanceId: ProviderInstanceId | null | undefined;
+  /**
+   * The instance a hand-off is pending on: the reader picked it from the model
+   * picker on a started thread whose session runs another provider, and the
+   * server will start that provider on the next turn with a replayed
+   * transcript. It outranks the lock, which otherwise filters the picked
+   * instance out and silently puts the old model back in the composer.
+   */
+  handoffInstanceId?: ProviderInstanceId | null | undefined;
 }) {
   const requestedInstanceId = input.candidateInstanceIds.find(
     (candidate) => candidate != null && candidate !== NO_PROVIDER_MODEL_SELECTION.instanceId,
@@ -454,11 +462,20 @@ export function resolveComposerProviderSelection(input: {
     input.lockedProvider === "antigravity" &&
     input.lockedInstanceId != null &&
     lockedContinuationGroupKey === null;
+  const handoffEntry =
+    input.handoffInstanceId == null
+      ? undefined
+      : input.entries.find(
+          (entry) =>
+            entry.instanceId === input.handoffInstanceId && entry.enabled && entry.isAvailable,
+        );
   const compatibleEntries = input.entries.filter(
     (entry) =>
-      (!input.lockedProvider || entry.driverKind === input.lockedProvider) &&
-      (!lockedContinuationGroupKey || entry.continuationGroupKey === lockedContinuationGroupKey) &&
-      (!requiresExactInstance || entry.instanceId === input.lockedInstanceId),
+      entry.instanceId === handoffEntry?.instanceId ||
+      ((!input.lockedProvider || entry.driverKind === input.lockedProvider) &&
+        (!lockedContinuationGroupKey ||
+          entry.continuationGroupKey === lockedContinuationGroupKey) &&
+        (!requiresExactInstance || entry.instanceId === input.lockedInstanceId)),
   );
   const selectedProviderEntry =
     input.candidateInstanceIds
