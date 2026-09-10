@@ -1,0 +1,14 @@
+MT Code
+Copyright 2026 Munim Technologies
+
+This product is a fork of T3 Code (https://github.com/pingdotgg/t3code) and
+includes substantial portions of it:
+
+    Copyright (c) 2026 T3 Tools Inc.
+
+That code was, and remains, licensed under the MIT License, whose terms
+require its copyright notice to travel with it. The full text is kept beside
+this file as LICENSE-MIT. MIT permits redistribution under other terms, so
+the work as a whole — including everything Munim Technologies has added — is
+distributed under the Apache License, Version 2.0 (see LICENSE), while the
+upstream notice above stays in force for the portions it covers.
