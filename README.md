@@ -1,4 +1,49 @@
-# MT Code
+<!-- Banner Image -->
+
+<p align="center">
+  <a href="https://github.com/munimtechnologies/mtcode">
+    <img alt="Munim Technologies" height="128" src="./.github/resources/banner.png">
+    <h1 align="center">MT Code</h1>
+  </a>
+</p>
+
+<p align="center">
+  <a aria-label="Latest release" href="https://github.com/munimtechnologies/mtcode/releases/latest" target="_blank">
+    <img alt="Latest release" src="https://img.shields.io/github/v/release/munimtechnologies/mtcode?filter=munim-v*&style=flat-square&label=Version&labelColor=000000&color=0066CC" />
+  </a>
+  <a aria-label="App is free to use" href="https://github.com/munimtechnologies/mtcode/blob/main/LICENSE" target="_blank">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-success.svg?style=flat-square&color=33CC12" />
+  </a>
+  <a aria-label="downloads per month" href="https://github.com/munimtechnologies/mtcode/releases" target="_blank">
+    <img alt="Downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmunimtechnologies%2Fmtcode%2Fbadges%2Fdownloads-monthly.json&style=flat-square" />
+  </a>
+  <a aria-label="total downloads" href="https://github.com/munimtechnologies/mtcode/releases" target="_blank">
+    <img alt="Total Downloads" src="https://img.shields.io/github/downloads/munimtechnologies/mtcode/total?style=flat-square&labelColor=gray&color=0066CC&label=Total%20Downloads" />
+  </a>
+</p>
+
+<p align="center">
+  <a aria-label="download" href="https://munimtech.com/mt-code"><b>Download MT Code</b></a>
+&ensp;•&ensp;
+  <a aria-label="documentation" href="https://github.com/munimtechnologies/mtcode/tree/main/docs">Read the Documentation</a>
+&ensp;•&ensp;
+  <a aria-label="report issues" href="https://github.com/munimtechnologies/mtcode/issues">Report Issues</a>
+</p>
+
+<h6 align="center">Follow Munim Technologies</h6>
+<p align="center">
+  <a aria-label="Follow Munim Technologies on GitHub" href="https://github.com/munimtechnologies" target="_blank">
+    <img alt="Munim Technologies on GitHub" src="https://img.shields.io/badge/GitHub-222222?style=for-the-badge&logo=github&logoColor=white" />
+  </a>&nbsp;
+  <a aria-label="Follow Munim Technologies on LinkedIn" href="https://linkedin.com/in/sheehanmunim" target="_blank">
+    <img alt="Munim Technologies on LinkedIn" src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" />
+  </a>&nbsp;
+  <a aria-label="Visit Munim Technologies Website" href="https://munimtech.com" target="_blank">
+    <img alt="Munim Technologies Website" src="https://img.shields.io/badge/Website-0066CC?style=for-the-badge&logo=globe&logoColor=white" />
+  </a>
+</p>
+
+## Introduction
 
 MT Code is a free, open-source desktop app for running and controlling coding agents — Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity — from one place. It is [Munim Technologies](https://munimtech.com)' fork of [T3 Code](https://github.com/pingdotgg/t3code) with extra features and fixes, and anyone can download and use it.
 

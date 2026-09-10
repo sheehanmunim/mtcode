@@ -1,0 +1,104 @@
+name: Download counts
+
+# GitHub reports one cumulative download counter per release asset and no
+# history, so "downloads this month" cannot be read from the API. This job
+# snapshots the running total once a day onto the `badges` branch and serves
+# the 30-day delta between snapshots as a shields.io endpoint.
+on:
+  schedule:
+    # 07:11 UTC, off the hour so it does not queue behind the rush.
+    - cron: "11 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: download-counts
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the badges branch
+        uses: actions/checkout@v5
+        with:
+          ref: badges
+          # A first run has no branch yet; the step below creates it orphaned.
+          fetch-depth: 1
+        continue-on-error: true
+
+      - name: Snapshot downloads and render the badges
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ ! -d .git ]; then
+            git init -q .
+            git remote add origin "https://github.com/$REPO.git"
+          fi
+          if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+            git checkout -q --orphan badges
+            git rm -rqf . 2>/dev/null || true
+          fi
+
+          total=$(gh api "repos/$REPO/releases" --paginate \
+            --jq '[.[].assets[].download_count] | add // 0')
+          today=$(date -u +%Y-%m-%d)
+          echo "total=$total on $today"
+
+          [ -f history.json ] || echo '[]' > history.json
+
+          # One snapshot per day, and the last 400 kept: enough for a year of
+          # 30-day windows without the file growing without bound.
+          jq --arg date "$today" --argjson total "$total" '
+            (map(select(.date != $date)) + [{date: $date, total: $total}])
+            | sort_by(.date)
+            | .[-400:]
+          ' history.json > history.next.json
+          mv history.next.json history.json
+
+          # The oldest snapshot at least 30 days old is the baseline; before one
+          # exists the window is short, so the badge says so rather than
+          # reporting a month it has not measured yet.
+          cutoff=$(date -u -d '30 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-30d +%Y-%m-%d)
+          jq -r --arg cutoff "$cutoff" --argjson total "$total" '
+            (map(select(.date <= $cutoff)) | last) as $baseline
+            | if $baseline then
+                { measured: true, downloads: ($total - $baseline.total) }
+              else
+                { measured: false, downloads: ($total - (.[0].total // $total)),
+                  since: (.[0].date // "today") }
+              end
+          ' history.json > window.json
+
+          monthly=$(jq -r '.downloads' window.json)
+          measured=$(jq -r '.measured' window.json)
+          if [ "$measured" = "true" ]; then
+            label="downloads / month"
+          else
+            label="downloads since $(jq -r '.since' window.json)"
+          fi
+
+          jq -n --arg label "$label" --argjson monthly "$monthly" '
+            { schemaVersion: 1, label: $label, message: ($monthly | tostring),
+              color: "33CC12", labelColor: "gray" }
+          ' > downloads-monthly.json
+
+          jq -n --argjson total "$total" '
+            { schemaVersion: 1, label: "total downloads",
+              message: ($total | tostring), color: "0066CC", labelColor: "gray" }
+          ' > downloads-total.json
+
+          git add history.json downloads-monthly.json downloads-total.json
+          if git diff --cached --quiet; then
+            echo "no change"
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "chore: snapshot download counts for $today"
+          git push -q "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" HEAD:badges
