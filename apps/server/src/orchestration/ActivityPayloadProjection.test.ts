@@ -195,6 +195,50 @@ describe("projectActivityPayload", () => {
     expect(textRead.payload).not.toMatchObject({ data: { imagePath: expect.anything() } });
   });
 
+  it("carries Codex image paths through, without the generated picture's bytes", () => {
+    const savedPath = "/Users/dev/.codex/generated_images/thread-1/call-1.png";
+    const generated = projectActivityPayload(
+      activity({
+        itemType: "image_view",
+        title: "Image view",
+        data: {
+          item: {
+            id: "call-1",
+            type: "imageGeneration",
+            status: "completed",
+            revisedPrompt: "A wide landscape",
+            savedPath,
+            // Codex sends the whole picture back as base64; it must not survive.
+            result: "iVBORw0KGgo".repeat(4_000),
+          },
+        },
+      }),
+    );
+
+    expect(generated.payload).toMatchObject({ data: { imagePath: savedPath } });
+    expect(JSON.stringify(generated.payload)).not.toContain("iVBORw0KGgo");
+    // Repeated projection is idempotent: the path survives its own output.
+    expect(projectActivityPayload(generated).payload).toMatchObject({
+      data: { imagePath: savedPath },
+    });
+
+    const viewed = projectActivityPayload(
+      activity({
+        itemType: "image_view",
+        data: { item: { id: "call-2", type: "imageView", path: "/workspace/shot.png" } },
+      }),
+    );
+    expect(viewed.payload).toMatchObject({ data: { imagePath: "/workspace/shot.png" } });
+
+    const notAnImage = projectActivityPayload(
+      activity({
+        itemType: "command_execution",
+        data: { item: { id: "call-3", path: "/workspace/src/index.ts" } },
+      }),
+    );
+    expect(notAnImage.payload).not.toMatchObject({ data: { imagePath: expect.anything() } });
+  });
+
   it("slims Codex-shaped mcp_tool_call items to rendered fields plus a result summary", () => {
     const projected = projectActivityPayload(
       activity({

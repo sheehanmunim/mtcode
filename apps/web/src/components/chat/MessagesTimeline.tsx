@@ -13,6 +13,7 @@ import type { CodexArtifactTemplate } from "@t3tools/client-runtime/codex-artifa
 import {
   resolveWorkEntryToolPresentation,
   resolveViewedImageAsset,
+  workEntryShowsInlineImage,
   workEntryViewedImagePath,
 } from "@t3tools/client-runtime/work-log/presentation";
 import { resolveWorkGroupScrollAnchor } from "@t3tools/client-runtime/work-log/scroll-anchor";
@@ -3477,6 +3478,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
           workspaceRoot,
         })
       : null;
+  const showsImageInline = viewedImage !== null && workEntryShowsInlineImage(workEntry);
   const canExpand =
     (showFailedIndicator && previewText.trim().length > 0) ||
     (workEntry.itemType === "mcp_tool_call" && workEntry.toolData !== undefined) ||
@@ -3594,7 +3596,7 @@ const PlainWorkEntryRow = memo(function PlainWorkEntryRow(props: {
           </span>
         </div>
       </div>
-      {expanded && viewedImage && threadRef ? (
+      {(expanded || showsImageInline) && viewedImage && threadRef ? (
         <div
           className="mt-1 ms-7 cursor-default"
           onClick={stopRowToggle}

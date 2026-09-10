@@ -506,6 +506,15 @@ export function workEntryViewedImagePath(entry: WorkLogPresentationEntry): strin
     : null;
 }
 
+/**
+ * An image the agent looked at or generated is the whole point of its row, so it
+ * reads inline — visible without expanding the row, and kept out of a settled
+ * turn's fold — the way Codex shows one.
+ */
+export function workEntryShowsInlineImage(entry: WorkLogPresentationEntry): boolean {
+  return entry.itemType === "image_view" && workEntryViewedImagePath(entry) !== null;
+}
+
 export interface ViewedImageAsset {
   readonly resource: Extract<AssetResource, { readonly _tag: "media-file" }>;
   readonly alt: string;

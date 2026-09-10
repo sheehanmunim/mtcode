@@ -48,6 +48,7 @@ import {
 import {
   resolveWorkEntryToolPresentation,
   type ToolGroupSummaryKind,
+  workEntryShowsInlineImage,
   workEntryViewedImagePath,
 } from "@t3tools/client-runtime/work-log/presentation";
 import { resolveWorkGroupScrollAnchor } from "@t3tools/client-runtime/work-log/scroll-anchor";
@@ -743,6 +744,7 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
   const canExpand = row.canExpand;
   const fullDetail = expanded ? row.getFullDetail() : null;
   const viewedImagePath = workEntryViewedImagePath(row.workEntry);
+  const showsImageInline = workEntryShowsInlineImage(row.workEntry);
   const toolPresentation = resolveWorkEntryToolPresentation(row.workEntry);
   const previewText = workEntryRowLabel(row.workEntry);
   const displayText = workEntryRowLabel(row.workEntry, expanded);
@@ -858,7 +860,8 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
         </View>
       </Pressable>
 
-      {expanded && (fullDetail || viewedImagePath || row.workEntry.questionAnswer) ? (
+      {(expanded || showsImageInline) &&
+      (fullDetail || viewedImagePath || row.workEntry.questionAnswer) ? (
         <Animated.View
           entering={WORK_LOG_DETAIL_ENTER_TRANSITION}
           exiting={WORK_LOG_DETAIL_EXIT_TRANSITION}
@@ -876,17 +879,19 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
               {props.renderImage({ href: viewedImagePath, alt: null, title: null })}
             </View>
           ) : null}
-          <ScrollView
-            nestedScrollEnabled
-            directionalLockEnabled
-            showsVerticalScrollIndicator
-            className="max-h-60"
-            contentContainerStyle={{ paddingRight: 8 }}
-          >
-            <Text selectable className="font-mono text-2xs leading-normal text-foreground-muted">
-              {fullDetail}
-            </Text>
-          </ScrollView>
+          {fullDetail ? (
+            <ScrollView
+              nestedScrollEnabled
+              directionalLockEnabled
+              showsVerticalScrollIndicator
+              className="max-h-60"
+              contentContainerStyle={{ paddingRight: 8 }}
+            >
+              <Text selectable className="font-mono text-2xs leading-normal text-foreground-muted">
+                {fullDetail}
+              </Text>
+            </ScrollView>
+          ) : null}
         </Animated.View>
       ) : null}
     </Animated.View>

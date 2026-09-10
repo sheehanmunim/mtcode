@@ -150,6 +150,17 @@ function projectViewedImagePath(data: Record<string, unknown>): string | undefin
     return directPath;
   }
 
+  // Codex names the picture on the item rather than beside it: `imageView`
+  // carries the file it read as `path`, and `imageGeneration` carries the file
+  // it just wrote as `savedPath` (its `result` is the same picture as base64,
+  // megabytes of it, which never crosses the wire). Both are absolute paths
+  // outside the workspace, which the media-file asset route serves by path.
+  const item = asRecord(data.item);
+  const itemImagePath = asTrimmedString(item?.savedPath) ?? asTrimmedString(item?.path);
+  if (itemImagePath && isWorkspaceImagePreviewPath(itemImagePath)) {
+    return itemImagePath;
+  }
+
   const toolName = asTrimmedString(data.toolName)?.toLowerCase();
   if (toolName !== "read" && toolName !== "read file") {
     return undefined;

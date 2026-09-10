@@ -10,6 +10,8 @@ import {
   summarizeToolGroup,
   toolGroupAction,
   toolGroupSummaryKind,
+  workEntryShowsInlineImage,
+  workEntryViewedImagePath,
   type ToolGroupSummaryKind,
 } from "@t3tools/client-runtime/work-log/presentation";
 export {
@@ -663,6 +665,12 @@ function deriveTurnFolds(input: {
       if (entry.kind === "work" && entry.entry.agentSpawn !== undefined) {
         continue;
       }
+      // Neither do rows showing a picture the agent looked at or generated:
+      // folding those away leaves a reader who was asked to pick between four
+      // images nothing to look at.
+      if (entry.kind === "work" && workEntryShowsInlineImage(entry.entry)) {
+        continue;
+      }
       hiddenEntryIds.add(entry.id);
     }
     if (hiddenEntryIds.size === 0) {
@@ -1000,6 +1008,8 @@ export function deriveMessagesTimelineRows(input: {
     );
   };
 
+  let lastInlineImagePath: string | null = null;
+
   for (let index = 0; index < input.timelineEntries.length; index += 1) {
     const timelineEntry = input.timelineEntries[index];
     if (!timelineEntry) {
@@ -1048,7 +1058,26 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
-      if (timelineEntry.entry.agentSpawn !== undefined || timelineEntry.entry.tone === "error") {
+      // A row showing a picture stands on its own, the way Codex shows one:
+      // summarised into "Read 4 files" the reader has to open, four generated
+      // images are four things they cannot see.
+      const inlineImagePath = workEntryShowsInlineImage(timelineEntry.entry)
+        ? workEntryViewedImagePath(timelineEntry.entry)
+        : null;
+      if (inlineImagePath !== null) {
+        // Codex generates a picture and then reads it back, two tool calls over
+        // one file. Show it once.
+        const isRepeatOfPreviousImage = lastInlineImagePath === inlineImagePath;
+        lastInlineImagePath = inlineImagePath;
+        if (isRepeatOfPreviousImage) continue;
+      } else {
+        lastInlineImagePath = null;
+      }
+      if (
+        timelineEntry.entry.agentSpawn !== undefined ||
+        timelineEntry.entry.tone === "error" ||
+        inlineImagePath !== null
+      ) {
         nextRows.push({
           kind: "work",
           id: timelineEntry.id,
@@ -1068,6 +1097,7 @@ export function deriveMessagesTimelineRows(input: {
           nextEntry.entry.agentSpawn !== undefined ||
           nextEntry.entry.sourceActivityKind === "context-compaction" ||
           nextEntry.entry.tone === "error" ||
+          workEntryShowsInlineImage(nextEntry.entry) ||
           activeWorkEntryIds.has(nextEntry.id) ||
           collapsedEntryIds.has(nextEntry.id) ||
           foldsByAnchorEntryId.has(nextEntry.id)

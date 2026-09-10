@@ -1121,6 +1121,41 @@ describe("deriveMessagesTimelineRows", () => {
     ]);
   });
 
+  it("gives every picture its own row and shows a generated one only once", () => {
+    const imageEntry = (id: string, path: string, label: string) => ({
+      id: `${id}-entry`,
+      kind: "work" as const,
+      createdAt: "2026-01-01T00:00:00Z",
+      entry: {
+        id,
+        createdAt: "2026-01-01T00:00:00Z",
+        label,
+        tone: "tool" as const,
+        itemType: "image_view" as const,
+        toolCallId: id,
+        viewedImagePath: path,
+      },
+    });
+    const generated = "/Users/dev/.codex/generated_images/thread/a.png";
+
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [
+        // Codex writes the picture, then reads it back: two calls, one file.
+        imageEntry("generate", generated, "Image view"),
+        imageEntry("view-back", generated, generated),
+        imageEntry("view-other", "/workspace/shot.png", "/workspace/shot.png"),
+      ],
+      isWorking: false,
+      activeTurnStartedAt: null,
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    // Not one "Read 3 files" toggle the reader has to open.
+    expect(rows.every((row) => row.kind === "work")).toBe(true);
+    expect(rows.map((row) => row.id)).toEqual(["generate-entry", "view-other-entry"]);
+  });
+
   it("only enables assistant copy for the terminal assistant message in a turn", () => {
     const rows = deriveMessagesTimelineRows({
       timelineEntries: [

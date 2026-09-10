@@ -868,6 +868,8 @@ function itemDetail(itemType: CanonicalItemType, item: CodexLifecycleItem): stri
     "text" in item ? item.text : undefined,
     "path" in item ? item.path : undefined,
     "prompt" in item ? item.prompt : undefined,
+    // `imageGeneration` describes itself only through the prompt Codex rewrote.
+    "revisedPrompt" in item ? item.revisedPrompt : undefined,
   ];
 
   for (const candidate of candidates) {
