@@ -12,7 +12,7 @@
 # infra/relay/scripts/deploy.ts.
 #
 # On success, Alchemy writes the deployed relay URL into this repo's root
-# .env; copy it into ~/.mt/munim-connect.env as T3CODE_RELAY_URL so client
+# .env; export it as T3CODE_RELAY_URL when building so client
 # builds pick it up.
 #
 # Refuses unless FORCE_PAID_RELAY=1 — this stack is optional and billed.

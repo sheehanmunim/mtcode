@@ -31,8 +31,7 @@ fi
 echo "HEAD=$(git rev-parse --short HEAD) $(git log -1 --oneline)"
 
 # Bake Connect public client config into desktop artifacts (gitignored .env).
-# ~/.mt/munim-connect.env (Munim-owned Clerk + relay identifiers) wins when
-# present; otherwise fall back to T3's .env.example defaults as before.
+# Without it hasCloudPublicConfig() is false and the Connect UI is omitted.
 if [[ ! -f .env ]]; then
   cp .env.example .env
   echo "created .env from .env.example for T3 Connect"
