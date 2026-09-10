@@ -1,4 +1,4 @@
-export type ConnectProviderId = "mt" | "t3";
+export type ConnectProviderId = "t3";
 
 export interface ConnectProviderPublicConfig {
   readonly id: ConnectProviderId;
@@ -28,7 +28,7 @@ export function parseConnectProviders(raw: string | undefined): ConnectProviderP
     return parsed.flatMap((entry) => {
       if (!entry || typeof entry !== "object") return [];
       const record = entry as Record<string, unknown>;
-      const id = record.id === "mt" || record.id === "t3" ? record.id : null;
+      const id = record.id === "t3" ? record.id : null;
       const clerkPublishableKey =
         typeof record.clerkPublishableKey === "string" ? record.clerkPublishableKey.trim() : "";
       const clerkJwtTemplate =
@@ -49,9 +49,7 @@ export function parseConnectProviders(raw: string | undefined): ConnectProviderP
           hostedAppUrl:
             typeof record.hostedAppUrl === "string" && record.hostedAppUrl.trim()
               ? record.hostedAppUrl.trim()
-              : id === "t3"
-                ? T3_CONNECT_HOSTED_APP_URL
-                : "",
+              : T3_CONNECT_HOSTED_APP_URL,
         } satisfies ConnectProviderPublicConfig,
       ];
     });
@@ -88,22 +86,19 @@ export function readBakedConnectProviders(): ConnectProviderPublicConfig[] {
 }
 
 export function canEmbedClerkProvider(
-  provider: ConnectProviderPublicConfig,
+  _provider: ConnectProviderPublicConfig,
   ctx: ConnectEmbedContext,
 ): boolean {
-  if (provider.id === "t3") {
-    // T3's production Clerk instance rejects origins other than app.t3.codes.
-    // Electron already talks to that instance successfully.
-    return ctx.isElectron || ctx.origin === T3_CONNECT_HOSTED_APP_URL;
-  }
-  return true;
+  // T3's production Clerk instance rejects origins other than app.t3.codes.
+  // Electron already talks to that instance successfully.
+  return ctx.isElectron || ctx.origin === T3_CONNECT_HOSTED_APP_URL;
 }
 
 export function readStoredConnectProviderId(): ConnectProviderId | null {
   if (typeof window === "undefined") return null;
   try {
     const value = window.localStorage.getItem(CONNECT_PROVIDER_STORAGE_KEY);
-    return value === "mt" || value === "t3" ? value : null;
+    return value === "t3" ? value : null;
   } catch {
     return null;
   }
@@ -126,27 +121,14 @@ export function resolveDefaultConnectProviderId(
   const stored = readStoredConnectProviderId();
   if (stored) {
     const storedProvider = providers.find((provider) => provider.id === stored) ?? null;
-    // Ignore a persisted T3 selection on origins where T3 Clerk cannot embed —
-    // otherwise the UI claims "T3" while the session stays on MT Connect.
     if (storedProvider && canEmbedClerkProvider(storedProvider, ctx)) {
       return stored;
     }
-    if (storedProvider && !canEmbedClerkProvider(storedProvider, ctx)) {
-      const fallback = providers.find((provider) => canEmbedClerkProvider(provider, ctx))?.id;
-      if (fallback) writeStoredConnectProviderId(fallback);
-    }
   }
-  // Prefer the provider that can actually tunnel (Sheehan, 2026-08-25):
-  // cross-machine sync goes through T3 Connect's relay, so a relay-capable
-  // provider outranks a Clerk-only one. MT Connect stays one switch away; on
-  // origins where T3 Clerk cannot embed, the Clerk-only provider remains the
-  // default.
   const relayCapable = providers.find(
     (provider) => provider.relayUrl !== "" && canEmbedClerkProvider(provider, ctx),
   );
   if (relayCapable) return relayCapable.id;
-  const mt = providers.find((provider) => provider.id === "mt");
-  if (mt) return "mt";
   const embeddable = providers.find((provider) => canEmbedClerkProvider(provider, ctx));
   return embeddable?.id ?? providers[0]?.id ?? null;
 }

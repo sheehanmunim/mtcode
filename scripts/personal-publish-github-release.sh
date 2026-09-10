@@ -30,19 +30,9 @@ export T3CODE_DESKTOP_DISTRO=munim
 export T3CODE_DESKTOP_UPDATE_REPOSITORY="$RELEASE_REPO"
 export GITHUB_REPOSITORY="$RELEASE_REPO"
 
-# Munim-owned T3 Connect config (public identifiers only), if present. The Mac
-# build below reads it from the process env; the Blade build reads the copy
-# synced to %USERPROFILE%\.mt\munim-connect.env.
-# shellcheck source=lib/personal-munim-connect-env.sh
-source "$REPO/scripts/lib/personal-munim-connect-env.sh"
-munim_connect_load
-
 # Never publish a build whose upstream merge dropped fork features (kept
 # modules, lost call sites). Checks live in personal-verify-fork-features.sh.
 "$REPO/scripts/personal-verify-fork-features.sh"
-if [[ "$MUNIM_CONNECT_ACTIVE" == 1 ]]; then
-  munim_connect_write_repo_env "$REPO"
-fi
 
 SIGN_IDENTITY="${T3_PERSONAL_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Developer ID Application/ { print $2; exit }')}"
 # Full T3CODE_DESKTOP_SIGNED enables Clerk passkey provisioning we may not have.
@@ -65,7 +55,6 @@ WIN_RELEASE_DIR="$WIN_HOME/dev/t3code-personal/release"
 WIN_JOB_LOG="$LOG_DIR/publish-munim-win-$$.log"
 WIN_PID=""
 build_windows() {
-  munim_connect_sync_to_windows_host "$WIN_HOST"
   scp -o BatchMode=yes "$REPO/scripts/personal-publish-munim-win.ps1" "$WIN_HOST:dev/personal-publish-munim-win.ps1"
   ssh -o BatchMode=yes "$WIN_HOST" powershell.exe -NoProfile -ExecutionPolicy Bypass \
     -File "$WIN_HOME/dev/personal-publish-munim-win.ps1" \

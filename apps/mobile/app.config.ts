@@ -1,11 +1,6 @@
 import type { ExpoConfig } from "expo/config";
 
 import { BRAND_ASSET_PATHS } from "../../scripts/lib/brand-assets.ts";
-import {
-  resolveMobileDistroIdentity,
-  resolveMobileDistroRaw,
-  resolveMobileUpdatesUrl,
-} from "../../scripts/lib/mobile-distro.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
 
 type AppVariant = "development" | "preview" | "production";
@@ -14,8 +9,7 @@ const repoEnv = loadRepoEnv();
 Object.assign(process.env, repoEnv);
 
 const APP_VARIANT = resolveAppVariant(repoEnv.APP_VARIANT);
-const mobileDistro = resolveMobileDistroIdentity(resolveMobileDistroRaw(repoEnv));
-const brandName = mobileDistro.productName;
+const brandName = "T3 Code";
 const isIosPersonalTeamBuild = repoEnv.T3CODE_IOS_PERSONAL_TEAM === "1";
 const runtimeVersionPolicy =
   process.env.MOBILE_VERSION_POLICY ??
@@ -81,49 +75,30 @@ const RELEASE_ASSETS = {
   androidNotificationColor: "#FFFFFF",
 } as const;
 
-const MUNIM_RELEASE_ASSETS = {
-  appIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
-  iosIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimIconComposerProject),
-  splashIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimIosIconPng),
-  splashIconDark: fromRepoRoot(BRAND_ASSET_PATHS.munimIosIconLightPng),
-  androidAdaptiveForeground: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
-  androidAdaptiveBackgroundColor: "#000000",
-  // The Munim mark is already full-bleed on black, so it needs no separate
-  // adaptive background layer and doubles as the Android splash image.
-  androidAdaptiveBackgroundImage: undefined,
-  androidSplashIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
-  androidMonochromeIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
-  androidNotificationIcon: fromRepoRoot(BRAND_ASSET_PATHS.munimUniversalIconPng),
-  androidNotificationColor: "#FFFFFF",
-} as const;
-
 const VARIANT_CONFIG = {
   development: {
     appName: `${brandName} Dev`,
-    scheme: mobileDistro.schemeDev,
-    iosBundleIdentifier: mobileDistro.iosBundleIdentifierDev,
-    androidPackage: mobileDistro.androidPackageDev,
-    relyingParty: mobileDistro.clerkRelyingParty,
-    hostedAppDomain: mobileDistro.hostedAppDomain,
+    scheme: "t3code-dev",
+    iosBundleIdentifier: "com.t3tools.t3code.dev",
+    androidPackage: "com.t3tools.t3code.dev",
+    relyingParty: "clerk.t3.codes",
     assets: DEVELOPMENT_ASSETS,
   },
   preview: {
     appName: `${brandName} Preview`,
-    scheme: mobileDistro.schemePreview,
-    iosBundleIdentifier: mobileDistro.iosBundleIdentifierPreview,
-    androidPackage: mobileDistro.androidPackagePreview,
-    relyingParty: mobileDistro.clerkRelyingParty,
-    hostedAppDomain: mobileDistro.hostedAppDomain,
+    scheme: "t3code-preview",
+    iosBundleIdentifier: "com.t3tools.t3code.preview",
+    androidPackage: "com.t3tools.t3code.preview",
+    relyingParty: "clerk.t3.codes",
     assets: PREVIEW_ASSETS,
   },
   production: {
     appName: brandName,
-    scheme: mobileDistro.scheme,
-    iosBundleIdentifier: mobileDistro.iosBundleIdentifier,
-    androidPackage: mobileDistro.androidPackage,
-    relyingParty: mobileDistro.clerkRelyingParty,
-    hostedAppDomain: mobileDistro.hostedAppDomain,
-    assets: mobileDistro.id === "munim" ? MUNIM_RELEASE_ASSETS : RELEASE_ASSETS,
+    scheme: "t3code",
+    iosBundleIdentifier: "com.t3tools.t3code",
+    androidPackage: "com.t3tools.t3code",
+    relyingParty: "clerk.t3.codes",
+    assets: RELEASE_ASSETS,
   },
 } as const;
 
@@ -142,11 +117,9 @@ const variant = VARIANT_CONFIG[APP_VARIANT];
 const iosBundleIdentifier = isIosPersonalTeamBuild
   ? personalTeamBundleIdentifier!
   : variant.iosBundleIdentifier;
-const mobileUpdatesUrl = resolveMobileUpdatesUrl(mobileDistro);
 const associatedDomains = [
   `applinks:${variant.relyingParty}`,
   `webcredentials:${variant.relyingParty}`,
-  ...(variant.hostedAppDomain ? [`applinks:${variant.hostedAppDomain}`] : []),
 ];
 
 const dmSansFonts = {
@@ -207,7 +180,7 @@ const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 
 const config: ExpoConfig = {
   name: variant.appName,
-  slug: mobileDistro.slug,
+  slug: "t3-code",
   platforms: ["ios", "android"],
   scheme: variant.scheme,
   version: "1.1.1",
@@ -220,16 +193,12 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: variant.assets.appIcon,
   userInterfaceStyle: "automatic",
-  updates: mobileUpdatesUrl
-    ? {
-        enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0",
-        url: mobileUpdatesUrl,
-        checkAutomatically: "ON_LOAD",
-        fallbackToCacheTimeout: 0,
-      }
-    : {
-        enabled: false,
-      },
+  updates: {
+    enabled: repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0",
+    url: "https://u.expo.dev/d763fcb8-d37c-41ea-a773-b54a0ab4a454",
+    checkAutomatically: "ON_LOAD",
+    fallbackToCacheTimeout: 0,
+  },
   ios: {
     icon: variant.assets.iosIcon,
     supportsTablet: true,
@@ -240,7 +209,7 @@ const config: ExpoConfig = {
     // Pin code signing to the T3 Tools team so non-interactive `expo run:ios`
     // does not fall back to a personal team (which cannot sign app groups,
     // Sign in with Apple, or push notification entitlements).
-    appleTeamId: mobileDistro.appleTeamId,
+    appleTeamId: "ARK85ZXQ4Z",
     associatedDomains,
     entitlements: {
       "keychain-access-groups": [`$(AppIdentifierPrefix)${variant.iosBundleIdentifier}`],
@@ -435,18 +404,12 @@ const config: ExpoConfig = {
     appVariant: APP_VARIANT,
     iosPersonalTeamBuild: isIosPersonalTeamBuild,
     branding: {
-      distroId: mobileDistro.id,
-      productName: mobileDistro.productName,
-      // The Connect name follows the baked identity, not the distro: MT Code
-      // ships with T3 Connect (T3's relay) as its sync backend.
-      connectProductName:
-        repoEnv.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY === "pk_live_Y2xlcmsudDMuY29kZXMk" ||
-        mobileDistro.id !== "munim"
-          ? "T3 Connect"
-          : "MT Connect",
-      scheme: mobileDistro.scheme,
-      schemeDev: mobileDistro.schemeDev,
-      schemePreview: mobileDistro.schemePreview,
+      distroId: "default",
+      productName: brandName,
+      connectProductName: "T3 Connect",
+      scheme: "t3code",
+      schemeDev: "t3code-dev",
+      schemePreview: "t3code-preview",
     },
     relay: {
       url: repoEnv.T3CODE_RELAY_URL ?? null,
@@ -469,15 +432,11 @@ const config: ExpoConfig = {
       tracesDataset: repoEnv.EXPO_PUBLIC_OTLP_TRACES_DATASET ?? null,
       tracesToken: repoEnv.EXPO_PUBLIC_OTLP_TRACES_TOKEN ?? null,
     },
-    ...(mobileDistro.easProjectId
-      ? {
-          eas: {
-            projectId: mobileDistro.easProjectId,
-          },
-        }
-      : {}),
+    eas: {
+      projectId: "d763fcb8-d37c-41ea-a773-b54a0ab4a454",
+    },
   },
-  ...(mobileDistro.expoOwner ? { owner: mobileDistro.expoOwner } : {}),
+  owner: "pingdotgg",
 };
 
 export default config;

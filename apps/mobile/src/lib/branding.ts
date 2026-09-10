@@ -1,7 +1,5 @@
 import Constants from "expo-constants";
 
-export type MobileDistroId = "default" | "munim";
-
 type BrandingExtra = {
   readonly distroId?: unknown;
   readonly productName?: unknown;
@@ -21,25 +19,16 @@ function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
-/** Active mobile distro. Defaults to official T3 when unset (tests / old binaries). */
-export function getDistroId(): MobileDistroId {
-  return brandingExtra().distroId === "munim" ? "munim" : "default";
-}
-
-export function isMunimDistro(): boolean {
-  return getDistroId() === "munim";
-}
-
-/** Product name shown in UI ("MT Code" / "T3 Code"). */
+/** Product name shown in UI. */
 export function getProductName(): string {
   return (
     readString(brandingExtra().productName) ??
     readString(Constants.expoConfig?.name)?.replace(/\s+(Dev|Preview)$/, "") ??
-    "MT Code"
+    "T3 Code"
   );
 }
 
-/** Connect product name ("MT Connect" / "T3 Connect"). */
+/** Connect product name. */
 export function getConnectName(): string {
   return (
     readString(brandingExtra().connectProductName) ?? `${getProductName().split(" ")[0]} Connect`
@@ -51,9 +40,9 @@ export function getMobileClientLabel(): string {
   return `${getProductName()} Mobile`;
 }
 
-/** Production deep-link scheme for this distro. */
+/** Production deep-link scheme. */
 export function getAppScheme(): string {
-  return readString(brandingExtra().scheme) ?? (isMunimDistro() ? "mtcode" : "t3code");
+  return readString(brandingExtra().scheme) ?? "t3code";
 }
 
 export function getAppSchemeDev(): string {

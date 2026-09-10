@@ -1,11 +1,5 @@
-import { OrganizationSwitcher, UserButton, useAuth } from "@clerk/react";
-import {
-  Building2Icon,
-  ExternalLinkIcon,
-  LogInIcon,
-  ServerIcon,
-  SmartphoneIcon,
-} from "lucide-react";
+import { UserButton, useAuth } from "@clerk/react";
+import { ExternalLinkIcon, LogInIcon, ServerIcon, SmartphoneIcon } from "lucide-react";
 
 import {
   canEmbedClerkProviderInThisClient,
@@ -15,7 +9,6 @@ import { providerHasRelay, type ConnectProviderPublicConfig } from "../../cloud/
 import { hasClerkPublicConfig } from "../../cloud/publicConfig";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { MobileClientsUserProfilePage } from "./MobileClientsUserProfilePage";
-import { MtConnectTeamPage } from "./MtConnectTeamPage";
 import { T3ConnectUserProfilePage } from "./T3ConnectUserProfilePage";
 import { useT3ConnectAuthPrompt } from "./useT3ConnectAuthPrompt";
 
@@ -40,22 +33,8 @@ function ConfiguredConnectSidebarAvatar() {
 
   if (!isLoaded || !isSignedIn) return null;
 
-  const isMtConnect = embedded?.id === "mt";
-
   return (
     <div className="flex shrink-0 items-center gap-0.5">
-      {isMtConnect ? (
-        <OrganizationSwitcher
-          createOrganizationMode="modal"
-          organizationProfileMode="modal"
-          appearance={{
-            elements: {
-              rootBox: "flex items-center",
-              organizationSwitcherTrigger: "size-7 rounded-lg p-0.5 hover:bg-sidebar-row-hover",
-            },
-          }}
-        />
-      ) : null}
       <UserButton
         appearance={{
           elements: {
@@ -64,15 +43,6 @@ function ConfiguredConnectSidebarAvatar() {
           },
         }}
       >
-        {isMtConnect ? (
-          <UserButton.UserProfilePage
-            label="Team"
-            labelIcon={<Building2Icon className="size-4" />}
-            url="team"
-          >
-            <MtConnectTeamPage />
-          </UserButton.UserProfilePage>
-        ) : null}
         {showRelayProfile ? (
           <UserButton.UserProfilePage
             label="Mobile clients"
@@ -99,8 +69,7 @@ function ConfiguredConnectSidebarAvatar() {
 function ConfiguredConnectSidebarSignIn() {
   const connect = useOptionalConnectProviders();
   if (!connect) return null;
-  const { providers, embedded, setActiveId } = connect;
-  const mt = providers.find((provider) => provider.id === "mt");
+  const { providers, embedded } = connect;
   const t3 = providers.find((provider) => provider.id === "t3");
   // Auth UI follows the Clerk instance that is actually mounted — never a
   // persisted preference for a provider that cannot embed on this origin.
@@ -109,30 +78,6 @@ function ConfiguredConnectSidebarSignIn() {
   return (
     <SidebarMenu>
       {signedInProvider ? <EmbeddedConnectSignInRow provider={signedInProvider} /> : null}
-      {mt && t3 && signedInProvider?.id === "mt" && canEmbedClerkProviderInThisClient(t3) ? (
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            onClick={() => {
-              setActiveId("t3");
-            }}
-          >
-            <LogInIcon />
-            <span>Use {t3.label}</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ) : null}
-      {mt && t3 && signedInProvider?.id === "t3" && canEmbedClerkProviderInThisClient(mt) ? (
-        <SidebarMenuItem>
-          <SidebarMenuButton
-            onClick={() => {
-              setActiveId("mt");
-            }}
-          >
-            <LogInIcon />
-            <span>Use {mt.label}</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ) : null}
       {t3 && !canEmbedClerkProviderInThisClient(t3) && t3.hostedAppUrl ? (
         <SidebarMenuItem>
           <SidebarMenuButton

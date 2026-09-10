@@ -33,12 +33,7 @@ echo "HEAD=$(git rev-parse --short HEAD) $(git log -1 --oneline)"
 # Bake Connect public client config into desktop artifacts (gitignored .env).
 # ~/.mt/munim-connect.env (Munim-owned Clerk + relay identifiers) wins when
 # present; otherwise fall back to T3's .env.example defaults as before.
-# shellcheck source=lib/personal-munim-connect-env.sh
-source "$REPO/scripts/lib/personal-munim-connect-env.sh"
-munim_connect_load
-if [[ "$MUNIM_CONNECT_ACTIVE" == 1 ]]; then
-  munim_connect_write_repo_env "$REPO"
-elif [[ ! -f .env ]]; then
+if [[ ! -f .env ]]; then
   cp .env.example .env
   echo "created .env from .env.example for T3 Connect"
 fi

@@ -1,18 +1,14 @@
 import type { ColorValue } from "react-native";
 
-import { getBrandMark, isMunimDistro } from "../lib/branding";
-import { MTWordmark } from "./MTWordmark";
+import { getBrandMark } from "../lib/branding";
 import { T3Wordmark } from "./T3Wordmark";
 import { AppText as Text } from "./AppText";
 
 /**
- * Distro-aware wordmark for navigation headers: MT SVG, T3 SVG, or plain text
- * for any other first-word mark.
+ * Wordmark for navigation headers: the T3 SVG, or plain text for any other
+ * first-word mark.
  */
 export function BrandWordmark(props: { readonly height: number; readonly color: ColorValue }) {
-  if (isMunimDistro()) {
-    return <MTWordmark color={props.color} height={props.height} />;
-  }
   const mark = getBrandMark();
   if (mark !== "T3") {
     return (

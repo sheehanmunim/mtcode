@@ -159,19 +159,7 @@ git reset --hard $new
 
 # Bake Connect public client config into desktop artifacts (gitignored .env).
 # Without this, hasCloudPublicConfig() is false and Connect UI is omitted.
-# %USERPROFILE%\.mt\munim-connect.env (Munim-owned identifiers, synced from
-# the Mac) wins when present; otherwise T3's .env.example defaults as before.
-$munimConnect = $false
-$munimConnectLib = Join-Path $repo "scripts\lib\personal-munim-connect-env.ps1"
-if (Test-Path $munimConnectLib) {
-  . $munimConnectLib
-  $munimConnect = Import-MunimConnectEnv -Repo $repo
-  if ($munimConnect) {
-    if ($env:T3CODE_RELAY_URL) { Log "munim-connect: building with Munim Connect config (relay: $($env:T3CODE_RELAY_URL))" }
-    else { Log "munim-connect: building with Munim Connect config (Clerk only - pair computers locally)" }
-  }
-}
-if (-not $munimConnect -and -not (Test-Path ".env")) {
+if (-not (Test-Path ".env")) {
   Copy-Item ".env.example" ".env"
   Log "created .env from .env.example for T3 Connect"
 }

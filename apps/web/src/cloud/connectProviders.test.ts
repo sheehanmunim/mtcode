@@ -10,19 +10,6 @@ import {
   selectEmbeddableConnectProviderId,
 } from "./connectProviders.ts";
 
-// Clerk-based MT Connect is retired (2026-08-25): builds bake only the T3
-// provider (scripts/lib/connect-public-providers.ts). The `mt` fixture below
-// exercises the source's inert mt branches, which stay for parse-compat.
-const mt = {
-  id: "mt" as const,
-  label: "MT Connect",
-  clerkPublishableKey: "pk_test_mt",
-  clerkJwtTemplate: "t3-relay",
-  clerkCliOAuthClientId: "",
-  relayUrl: "",
-  hostedAppUrl: "https://mt.example.test",
-};
-
 const t3 = {
   id: "t3" as const,
   label: "T3 Connect",
@@ -44,37 +31,34 @@ describe("parseConnectProviders", () => {
     expect(parseConnectProviders("{}")).toEqual([]);
   });
 
-  it("keeps well-formed MT and T3 providers", () => {
-    expect(parseConnectProviders(JSON.stringify([mt, t3]))).toEqual([mt, t3]);
+  it("keeps a well-formed T3 provider", () => {
+    expect(parseConnectProviders(JSON.stringify([t3]))).toEqual([t3]);
+  });
+
+  it("drops a provider naming an identity this build no longer has", () => {
+    const retired = { ...t3, id: "mt", label: "MT Connect" };
+    expect(parseConnectProviders(JSON.stringify([retired, t3]))).toEqual([t3]);
   });
 });
 
 describe("canEmbedClerkProvider", () => {
   it("embeds T3 Connect only on Electron or app.t3.codes", () => {
-    expect(
-      canEmbedClerkProvider(t3, { origin: "https://mt.example.test", isElectron: false }),
-    ).toBe(false);
+    expect(canEmbedClerkProvider(t3, { origin: "https://example.test", isElectron: false })).toBe(
+      false,
+    );
     expect(canEmbedClerkProvider(t3, { origin: "https://app.t3.codes", isElectron: false })).toBe(
       true,
     );
-    expect(canEmbedClerkProvider(t3, { origin: "https://mt.example.test", isElectron: true })).toBe(
+    expect(canEmbedClerkProvider(t3, { origin: "https://example.test", isElectron: true })).toBe(
       true,
     );
-  });
-
-  it("embeds MT Connect on the hosted web origin", () => {
-    expect(
-      canEmbedClerkProvider(mt, { origin: "https://mt.example.test", isElectron: false }),
-    ).toBe(true);
   });
 });
 
 describe("readBakedConnectProviders", () => {
-  it("returns only the T3 provider from the baked provider list", () => {
+  it("returns the T3 provider from the baked provider list", () => {
     vi.stubEnv("VITE_CONNECT_PROVIDERS", JSON.stringify([t3]));
-    const providers = readBakedConnectProviders();
-    expect(providers).toEqual([t3]);
-    expect(providers.find((provider) => provider.id === "mt")).toBeUndefined();
+    expect(readBakedConnectProviders()).toEqual([t3]);
   });
 });
 
@@ -87,52 +71,41 @@ describe("resolveDefaultConnectProviderId", () => {
     // Origins where T3 Clerk cannot embed still fall back to the only provider.
     expect(
       resolveDefaultConnectProviderId([t3], {
-        origin: "https://mt.example.test",
+        origin: "https://example.test",
         isElectron: false,
       }),
     ).toBe("t3");
   });
 
-  it("defaults to MT Connect on the hosted web (legacy two-provider input)", () => {
-    expect(
-      resolveDefaultConnectProviderId([mt, t3], {
-        origin: "https://mt.example.test",
-        isElectron: false,
-      }),
-    ).toBe("mt");
-  });
-
-  it("defaults to the relay-capable T3 Connect on Electron when both exist", () => {
-    expect(
-      resolveDefaultConnectProviderId([mt, t3], {
-        origin: "file://",
-        isElectron: true,
-      }),
-    ).toBe("t3");
+  it("has nothing to resolve without a provider", () => {
+    expect(resolveDefaultConnectProviderId([], { origin: "file://", isElectron: true })).toBeNull();
   });
 });
 
 describe("resolveEmbeddedClerkProvider", () => {
-  it("falls back to MT Connect when T3 cannot embed on the hosted web", () => {
+  it("mounts T3 where it can embed and nothing where it cannot", () => {
     expect(
-      resolveEmbeddedClerkProvider([mt, t3], "t3", {
-        origin: "https://mt.example.test",
+      resolveEmbeddedClerkProvider([t3], "t3", { origin: "file://", isElectron: true }),
+    ).toEqual(t3);
+    expect(
+      resolveEmbeddedClerkProvider([t3], "t3", {
+        origin: "https://example.test",
         isElectron: false,
       }),
-    ).toEqual(mt);
+    ).toBeNull();
   });
 });
 
 describe("selectEmbeddableConnectProviderId", () => {
-  it("rejects T3 on hosted Munim web", () => {
+  it("rejects an identity Clerk cannot embed on this origin", () => {
     expect(
-      selectEmbeddableConnectProviderId([mt, t3], "t3", {
-        origin: "https://mt.example.test",
+      selectEmbeddableConnectProviderId([t3], "t3", {
+        origin: "https://example.test",
         isElectron: false,
       }),
     ).toBeNull();
     expect(
-      selectEmbeddableConnectProviderId([mt, t3], "t3", {
+      selectEmbeddableConnectProviderId([t3], "t3", {
         origin: "file://",
         isElectron: true,
       }),
@@ -142,8 +115,8 @@ describe("selectEmbeddableConnectProviderId", () => {
 
 describe("providerHasRelay", () => {
   it("requires an https relay URL", () => {
-    expect(providerHasRelay(mt)).toBe(false);
     expect(providerHasRelay(t3)).toBe(true);
+    expect(providerHasRelay({ ...t3, relayUrl: "" })).toBe(false);
     expect(providerHasRelay(null)).toBe(false);
   });
 });

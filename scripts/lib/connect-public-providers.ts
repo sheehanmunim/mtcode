@@ -11,7 +11,7 @@ export const T3_CONNECT_CLI_OAUTH_CLIENT_ID = "hzxSgY2cH10sDU2r";
 export const T3_CONNECT_RELAY_URL = "https://relay.t3.codes";
 export const T3_CONNECT_HOSTED_APP_URL = "https://app.t3.codes";
 
-export type ConnectProviderId = "mt" | "t3";
+export type ConnectProviderId = "t3";
 
 export interface ConnectProviderPublicConfig {
   readonly id: ConnectProviderId;

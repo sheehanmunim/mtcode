@@ -49,40 +49,12 @@
       "channel": "production",
       "environment": "production",
       "autoIncrement": true
-    },
-    "production-munim": {
-      "extends": "production",
-      "credentialsSource": "local",
-      "env": {
-        "APP_VARIANT": "production",
-        "T3CODE_MOBILE_DISTRO": "munim",
-        "MOBILE_VERSION_POLICY": "appVersion",
-        "EXPO_PUBLIC_MARKETING_SITE_URL": "https://www.munimtech.com",
-        "EXPO_PUBLIC_PRIVACY_POLICY_PATH": "privacy",
-        "EXPO_PUBLIC_TERMS_OF_SERVICE_PATH": "terms",
-        "EXPO_PUBLIC_SECURITY_POLICY_PATH": "privacy",
-        "EXPO_PUBLIC_LEGAL_PATH": "privacy",
-        "NODE_OPTIONS": "--max-old-space-size=4096"
-      },
-      "channel": "production-munim"
     }
   },
   "submit": {
     "production": {
       "ios": {
         "ascAppId": "6787819824"
-      },
-      "android": {
-        "track": "internal"
-      }
-    },
-    "production-munim": {
-      "ios": {
-        "ascAppId": "6803353917",
-        "ascApiKeyPath": "./credentials/apple/AuthKey_A5X3Y92UJP.p8",
-        "ascApiKeyId": "A5X3Y92UJP",
-        "ascApiKeyIssuerId": "6f677a98-7245-4fce-a5ae-be933547b809",
-        "appleTeamId": "6T5J6U2UVT"
       },
       "android": {
         "track": "internal"

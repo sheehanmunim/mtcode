@@ -17,8 +17,8 @@ interface ConnectProvidersContextValue {
   readonly activeId: ConnectProviderId | null;
   readonly active: ConnectProviderPublicConfig | null;
   readonly embedded: ConnectProviderPublicConfig | null;
-  /** Switch the in-app Clerk identity. Non-embeddable providers (T3 on hosted
-   * Munim web) are ignored — open their hostedAppUrl instead. */
+  /** Switch the in-app Clerk identity. A provider Clerk cannot embed on this
+   * origin is ignored — open its hostedAppUrl instead. */
   readonly setActiveId: (id: ConnectProviderId) => boolean;
 }
 

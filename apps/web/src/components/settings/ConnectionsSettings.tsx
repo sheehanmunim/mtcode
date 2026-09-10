@@ -107,7 +107,6 @@ import { QRCodeSvg } from "../ui/qr-code";
 import { Spinner } from "../ui/spinner";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { Button } from "../ui/button";
@@ -141,7 +140,6 @@ import {
   canEmbedClerkProvider,
   currentEmbedContext,
   providerHasRelay,
-  type ConnectProviderId,
   type ConnectProviderPublicConfig,
 } from "~/cloud/connectProviders";
 import { useCloudLinkController } from "~/cloud/useCloudLinkController";
@@ -1854,11 +1852,6 @@ function ConfiguredCloudLinkRow({ canManageRelay }: { readonly canManageRelay: b
   const embeddedProvider = connect?.embedded ?? null;
   const connectLabel = embeddedProvider?.label ?? "Connect";
   const hasRelay = providerHasRelay(embeddedProvider);
-  const canSwitchToT3Relay = Boolean(
-    connect?.providers.some(
-      (provider) => provider.id === "t3" && canEmbedClerkProvider(provider, currentEmbedContext()),
-    ),
-  );
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUpdatingPreference, setIsUpdatingPreference] = useState(false);
 
@@ -1868,13 +1861,11 @@ function ConfiguredCloudLinkRow({ canManageRelay }: { readonly canManageRelay: b
       ? `Your session does not have permission to manage ${connectLabel} access.`
       : null;
   // Publish works without a managed tunnel; Share needs an https relay URL on
-  // the embedded Connect provider (MT has Clerk today but no Munim relay yet).
+  // the embedded Connect provider.
   const shareDisabledReason =
     sessionDisabledReason ??
     (!hasRelay
-      ? canSwitchToT3Relay
-        ? `${connectLabel} has no managed relay yet. Use T3 Connect in this app to share via the T3 relay, or keep Publish on without Share.`
-        : `${connectLabel} has no managed relay yet. Publish agent activity still works; Share needs a Munim relay deploy.`
+      ? `${connectLabel} has no managed relay. Publish agent activity still works; Share needs one.`
       : null);
   const isBusy = isUpdating || isUpdatingPreference;
 
@@ -1963,36 +1954,10 @@ function ConfiguredCloudLinkRow({ canManageRelay }: { readonly canManageRelay: b
   );
 }
 
-function connectIdentityDescription(
-  embeddedId: ConnectProviderId | null,
-  providers: ReadonlyArray<ConnectProviderPublicConfig>,
-  ctx: ReturnType<typeof currentEmbedContext>,
-): string {
-  const hasMt = providers.some((provider) => provider.id === "mt");
-  const t3 = providers.find((provider) => provider.id === "t3");
-  const t3Embeds = Boolean(t3 && canEmbedClerkProvider(t3, ctx));
-  if (embeddedId === "mt") {
-    if (t3Embeds) {
-      return "Munim identity for this app. Use T3 Connect when you need T3-linked machines or the T3 relay.";
-    }
-    if (t3) {
-      return "Munim identity for this app. Open T3 Connect in a browser tab for T3-linked machines — it cannot sign in inside this page.";
-    }
-    return "Munim identity for this app. Sign in from the sidebar, then pair a computer under Remote environments.";
-  }
-  if (embeddedId === "t3") {
-    return hasMt
-      ? "T3 identity for T3-linked machines and the T3 relay. Use MT Connect for Munim identity."
-      : "T3 identity for T3-linked machines and the T3 relay.";
-  }
-  return "Sign in from the sidebar to use Connect.";
-}
-
 function ConnectAccountsSection() {
   const connect = useOptionalConnectProviders();
   const providers = connect?.providers ?? [];
   const embedded = connect?.embedded ?? null;
-  const setActiveId = connect?.setActiveId;
   const ctx = currentEmbedContext();
   if (providers.length === 0 && !hasClerkPublicConfig()) return null;
 
@@ -2003,42 +1968,17 @@ function ConnectAccountsSection() {
         provider.id === "t3" && !canEmbedClerkProvider(provider, ctx) && provider.hostedAppUrl,
     ) ?? null;
 
-  if (embeddableProviders.length >= 2) {
-    const selectedId = embedded?.id ?? embeddableProviders[0]?.id ?? null;
-    return (
-      <SettingsSection title="Connect">
-        <SettingsRow
-          title="Identity"
-          description={connectIdentityDescription(selectedId, providers, ctx)}
-          control={
-            <ToggleGroup
-              aria-label="Connect identity"
-              variant="segmented"
-              value={selectedId ? [selectedId] : []}
-              onValueChange={(next) => {
-                const value = next[0];
-                if ((value === "mt" || value === "t3") && setActiveId) setActiveId(value);
-              }}
-            >
-              {embeddableProviders.map((provider) => (
-                <Toggle key={provider.id} value={provider.id}>
-                  {provider.id === "mt" ? "MT" : "T3"}
-                </Toggle>
-              ))}
-            </ToggleGroup>
-          }
-        />
-      </SettingsSection>
-    );
-  }
-
   const only = embeddableProviders[0] ?? providers[0];
   if (!only) return null;
   return (
     <SettingsSection title="Connect">
       <SettingsRow
         title={embedded?.label ?? only.label}
-        description={connectIdentityDescription(embedded?.id ?? only.id, providers, ctx)}
+        description={
+          embedded
+            ? "T3 identity for T3-linked machines and the T3 relay."
+            : "Sign in from the sidebar to use Connect."
+        }
         control={
           externalT3 ? (
             <Button
@@ -2061,7 +2001,7 @@ function ConnectAccountsSection() {
 
 function CloudLinkRow({ canManageRelay }: { readonly canManageRelay: boolean }) {
   // Publish works with Clerk alone; Share still gates on an https relay inside
-  // ConfiguredCloudLinkRow. Don't hide the whole section when Munim has no relay.
+  // ConfiguredCloudLinkRow, so the section stays even without one.
   return hasClerkPublicConfig() || hasCloudPublicConfig() ? (
     <ConfiguredCloudLinkRow canManageRelay={canManageRelay} />
   ) : null;

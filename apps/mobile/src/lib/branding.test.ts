@@ -14,34 +14,30 @@ describe("mobile branding helpers", () => {
     expect(branding.getProductName()).toBe("T3 Code");
     expect(branding.getConnectName()).toBe("T3 Connect");
     expect(branding.getAppScheme()).toBe("t3code");
-    expect(branding.isMunimDistro()).toBe(false);
   });
 
-  it("reads Munim branding from expo extra", async () => {
+  it("reads the baked branding from expo extra", async () => {
     vi.doMock("expo-constants", () => ({
       default: {
         expoConfig: {
-          name: "MT Code",
+          name: "T3 Code Preview",
           extra: {
             branding: {
-              distroId: "munim",
-              productName: "MT Code",
-              connectProductName: "MT Connect",
-              scheme: "mtcode",
-              schemeDev: "mtcode-dev",
-              schemePreview: "mtcode-preview",
+              productName: "T3 Code",
+              connectProductName: "T3 Connect",
+              scheme: "t3code",
+              schemeDev: "t3code-dev",
+              schemePreview: "t3code-preview",
             },
           },
         },
       },
     }));
     const branding = await import("./branding.ts");
-    expect(branding.getProductName()).toBe("MT Code");
-    expect(branding.getConnectName()).toBe("MT Connect");
-    expect(branding.getMobileClientLabel()).toBe("MT Code Mobile");
-    expect(branding.getAppScheme()).toBe("mtcode");
-    expect(branding.getBrandMark()).toBe("MT");
+    expect(branding.getMobileClientLabel()).toBe("T3 Code Mobile");
+    expect(branding.getAppSchemeDev()).toBe("t3code-dev");
+    expect(branding.getAppSchemePreview()).toBe("t3code-preview");
+    expect(branding.getBrandMark()).toBe("T3");
     expect(branding.getBrandLabel()).toBe("Code");
-    expect(branding.isMunimDistro()).toBe(true);
   });
 });
