@@ -515,6 +515,35 @@ export function workEntryShowsInlineImage(entry: WorkLogPresentationEntry): bool
   return entry.itemType === "image_view" && workEntryViewedImagePath(entry) !== null;
 }
 
+/**
+ * The picture an activity is about, read from wherever its payload names it.
+ *
+ * The server's activity projection lifts the path onto `data.imagePath`, but a
+ * client must not depend on that having run: Codex names the file on the item
+ * itself — `imageGeneration` as `savedPath`, `imageView` as `path` — and a
+ * payload that reaches a client unprojected still carries the item. Reading
+ * both is what makes a generated picture show up either way; reading only the
+ * projected field left four generated options rendering as "Read 4 files".
+ *
+ * Only the item fallback is extension-checked. `data.imagePath` is the server's
+ * own answer and is taken as given, the way it always has been.
+ */
+export function extractActivityViewedImagePath(payload: unknown): string | undefined {
+  const data = asRecord(asRecord(payload)?.data);
+  if (!data) return undefined;
+  const projectedPath = trimmedString(data.imagePath);
+  if (projectedPath) return projectedPath;
+  const item = asRecord(data.item);
+  const itemPath = trimmedString(item?.savedPath) ?? trimmedString(item?.path);
+  return itemPath && isWorkspaceImagePreviewPath(itemPath) ? itemPath : undefined;
+}
+
+function trimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 export interface ViewedImageAsset {
   readonly resource: Extract<AssetResource, { readonly _tag: "media-file" }>;
   readonly alt: string;

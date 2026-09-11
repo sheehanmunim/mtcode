@@ -4,6 +4,7 @@ import { ThreadId } from "@t3tools/contracts";
 
 import {
   commandDetailRepeatsCommand,
+  extractActivityViewedImagePath,
   extractCommandOutputText,
   resolveViewedImageAsset,
   resolveWorkEntryToolPresentation,
@@ -538,6 +539,52 @@ describe("workEntryViewedImagePath", () => {
       workEntryViewedImagePath({ ...entry, itemType: "image_view", detail: "a.png\nb.png" }),
     ).toBeNull();
     expect(workEntryViewedImagePath({ ...entry, detail: "a.png" })).toBeNull();
+  });
+});
+
+describe("extractActivityViewedImagePath", () => {
+  const generated = "/Users/dev/.codex/generated_images/thread/exec-1.png";
+
+  it("reads the path the server projected", () => {
+    expect(extractActivityViewedImagePath({ data: { imagePath: generated } })).toBe(generated);
+  });
+
+  it("reads a generated picture straight off the item", () => {
+    // Codex `imageGeneration`: the file it just wrote, plus the same picture
+    // again as megabytes of base64 that never reach a client.
+    expect(
+      extractActivityViewedImagePath({
+        itemType: "image_view",
+        data: { item: { type: "imageGeneration", savedPath: generated, result: "BASE64..." } },
+      }),
+    ).toBe(generated);
+  });
+
+  it("reads a viewed picture straight off the item", () => {
+    expect(
+      extractActivityViewedImagePath({
+        data: { item: { type: "imageView", path: " /workspace/shot.png " } },
+      }),
+    ).toBe("/workspace/shot.png");
+  });
+
+  it("prefers the projected path over the item", () => {
+    expect(
+      extractActivityViewedImagePath({
+        data: { imagePath: generated, item: { path: "/workspace/other.png" } },
+      }),
+    ).toBe(generated);
+  });
+
+  it("ignores items that name something other than a picture", () => {
+    expect(extractActivityViewedImagePath({ data: { item: { path: "/workspace/a.txt" } } })).toBe(
+      undefined,
+    );
+    expect(extractActivityViewedImagePath({ data: { item: { savedPath: "   " } } })).toBe(
+      undefined,
+    );
+    expect(extractActivityViewedImagePath({ data: {} })).toBe(undefined);
+    expect(extractActivityViewedImagePath(null)).toBe(undefined);
   });
 });
 

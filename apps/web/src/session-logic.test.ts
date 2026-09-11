@@ -1371,6 +1371,38 @@ describe("deriveWorkLogEntries", () => {
     });
   });
 
+  it("shows a Codex-generated picture whose payload reached the client unprojected", () => {
+    const savedPath = "/Users/dev/.codex/generated_images/thread/exec-1.png";
+    const entries = deriveWorkLogEntries([
+      makeActivity({
+        id: "image-generate-complete",
+        createdAt: "2026-09-10T16:46:20.719Z",
+        kind: "tool.completed",
+        summary: "Image view",
+        payload: {
+          toolCallId: "exec-1",
+          itemType: "image_view",
+          status: "completed",
+          title: "Image view",
+          // Codex names the file on the item; the server's projection lifts it
+          // onto `data.imagePath`, but the picture has to show either way.
+          data: {
+            item: {
+              id: "exec-1",
+              type: "imageGeneration",
+              status: "completed",
+              savedPath,
+              result: "BASE64...",
+            },
+          },
+        },
+      }),
+    ]);
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ itemType: "image_view", viewedImagePath: savedPath });
+  });
+
   it("does not use command stdout as the detail when Cursor omits the command input", () => {
     const activities: OrchestrationThreadActivity[] = [
       makeActivity({

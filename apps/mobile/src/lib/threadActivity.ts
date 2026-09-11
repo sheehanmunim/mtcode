@@ -16,6 +16,7 @@ import type {
 import { formatDuration } from "@t3tools/shared/orchestrationTiming";
 import {
   commandDetailRepeatsCommand,
+  extractActivityViewedImagePath,
   extractCommandOutputText,
   extractWorkLogToolLifecycleStatus,
   isWorktreeSetupActivity,
@@ -523,7 +524,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   const itemType = extractWorkLogItemType(payload);
   const requestKind = extractWorkLogRequestKind(payload);
-  const viewedImagePath = asTrimmedString(asRecord(payload?.data)?.imagePath);
+  const viewedImagePath = extractActivityViewedImagePath(payload);
   const commandOutput = commandPreview.command ? extractCommandOutputText(payload?.data) : null;
   const output = commandOutput ? stripTrailingExitCode(commandOutput).output : null;
   if (!taskDetailAsLabel && output) {

@@ -12,6 +12,7 @@ import { canCreateProjectInEnvironment } from "@t3tools/client-runtime/operation
 import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
 import {
   commandDetailRepeatsCommand,
+  extractActivityViewedImagePath,
   extractCommandOutputText,
   extractWorkLogToolLifecycleStatus,
   isWorktreeSetupActivity,
@@ -580,7 +581,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   const itemType = extractWorkLogItemType(payload);
   const requestKind = extractWorkLogRequestKind(payload);
-  const viewedImagePath = asTrimmedString(asRecord(payload?.data)?.imagePath);
+  const viewedImagePath = extractActivityViewedImagePath(payload);
   if (detail) {
     entry.detail = detail;
   } else if (activity.kind === "runtime.error" || activity.kind === "runtime.warning") {
