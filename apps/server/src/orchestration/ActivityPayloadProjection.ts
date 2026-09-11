@@ -435,6 +435,17 @@ export function projectActivityPayload(
     ...activity,
     payload: {
       ...projectedPayload,
+      // Name the picture in `detail` as well as `data.imagePath`. `imageView`
+      // items already arrive this way and are the only image rows the desktop
+      // client renders today; `imageGeneration` items carry no `detail`, and on
+      // desktop their `data.imagePath` does not reach the work-log entry, so
+      // four generated options rendered as four bodiless "Image view" rows.
+      // Why `data.imagePath` is dropped there — and only there, since a browser
+      // against the same server reads it — is still unexplained; naming the file
+      // the way the rows that do work name it is what makes the picture show up.
+      ...(imagePath && asTrimmedString(projectedPayload.detail) === null
+        ? { detail: imagePath }
+        : {}),
       data: projectedData,
     },
   };

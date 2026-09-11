@@ -216,6 +216,9 @@ describe("projectActivityPayload", () => {
     );
 
     expect(generated.payload).toMatchObject({ data: { imagePath: savedPath } });
+    // The desktop client reads the picture's name from `detail`, so a generated
+    // item — which arrives without one — is given the path there too.
+    expect(generated.payload).toMatchObject({ detail: savedPath });
     expect(JSON.stringify(generated.payload)).not.toContain("iVBORw0KGgo");
     // Repeated projection is idempotent: the path survives its own output.
     expect(projectActivityPayload(generated).payload).toMatchObject({
@@ -237,6 +240,20 @@ describe("projectActivityPayload", () => {
       }),
     );
     expect(notAnImage.payload).not.toMatchObject({ data: { imagePath: expect.anything() } });
+    expect(notAnImage.payload).not.toMatchObject({ detail: expect.anything() });
+
+    // An item that already describes itself keeps its own wording.
+    const described = projectActivityPayload(
+      activity({
+        itemType: "image_view",
+        detail: "Generated four sky options",
+        data: { item: { id: "call-4", type: "imageGeneration", savedPath } },
+      }),
+    );
+    expect(described.payload).toMatchObject({
+      detail: "Generated four sky options",
+      data: { imagePath: savedPath },
+    });
   });
 
   it("slims Codex-shaped mcp_tool_call items to rendered fields plus a result summary", () => {
