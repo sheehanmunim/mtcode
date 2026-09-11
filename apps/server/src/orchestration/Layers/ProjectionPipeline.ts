@@ -58,6 +58,7 @@ import { ProjectionThreadSessionRepositoryLive } from "../../persistence/Layers/
 import { ProjectionTurnRepositoryLive } from "../../persistence/Layers/ProjectionTurns.ts";
 import { ProjectionThreadRepositoryLive } from "../../persistence/Layers/ProjectionThreads.ts";
 import { ServerConfig } from "../../config.ts";
+import { projectActivityPayload } from "../ActivityPayloadProjection.ts";
 import {
   OrchestrationProjectionPipeline,
   type OrchestrationProjectionPipelineShape,
@@ -1575,21 +1576,26 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           });
           return;
 
-        case "thread.activity-appended":
+        case "thread.activity-appended": {
+          // Both transports project the payload on the way out (ws.ts and
+          // orchestration/http.ts), so a client never sees the unprojected one:
+          // storing it kept a gigabyte of file-change diffs and tool output that
+          // nothing reads. The event log still holds the original, which is what
+          // a projection rebuild reads from.
+          const activity = projectActivityPayload(event.payload.activity);
           yield* projectionThreadActivityRepository.upsert({
-            activityId: event.payload.activity.id,
+            activityId: activity.id,
             threadId: event.payload.threadId,
-            turnId: event.payload.activity.turnId,
-            tone: event.payload.activity.tone,
-            kind: event.payload.activity.kind,
-            summary: event.payload.activity.summary,
-            payload: event.payload.activity.payload,
-            ...(event.payload.activity.sequence !== undefined
-              ? { sequence: event.payload.activity.sequence }
-              : {}),
-            createdAt: event.payload.activity.createdAt,
+            turnId: activity.turnId,
+            tone: activity.tone,
+            kind: activity.kind,
+            summary: activity.summary,
+            payload: activity.payload,
+            ...(activity.sequence !== undefined ? { sequence: activity.sequence } : {}),
+            createdAt: activity.createdAt,
           });
           return;
+        }
 
         case "thread.reverted": {
           const existingRows = yield* projectionThreadActivityRepository.listByThreadId({

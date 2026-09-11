@@ -4905,3 +4905,115 @@ engineLayer("OrchestrationProjectionPipeline via engine dispatch", (it) => {
     }),
   );
 });
+
+it.layer(Layer.fresh(makeProjectionPipelinePrefixedTestLayer("t3-projection-activity-payload-")))(
+  "OrchestrationProjectionPipeline",
+  (it) => {
+    it.effect("stores the projected activity payload, not the provider's original", () =>
+      Effect.gen(function* () {
+        const projectionPipeline = yield* OrchestrationProjectionPipeline;
+        const eventStore = yield* OrchestrationEventStore;
+        const sql = yield* SqlClient.SqlClient;
+        const now = "2026-01-01T00:00:00.000Z";
+
+        const appendAndProject = (event: Parameters<typeof eventStore.append>[0]) =>
+          eventStore
+            .append(event)
+            .pipe(Effect.flatMap((savedEvent) => projectionPipeline.projectEvent(savedEvent)));
+
+        yield* appendAndProject({
+          type: "project.created",
+          eventId: EventId.make("evt-activity-payload-project"),
+          aggregateKind: "project",
+          aggregateId: ProjectId.make("project-activity-payload"),
+          occurredAt: now,
+          commandId: CommandId.make("cmd-activity-payload-project"),
+          causationEventId: null,
+          correlationId: CorrelationId.make("cmd-activity-payload-project"),
+          metadata: {},
+          payload: {
+            projectId: ProjectId.make("project-activity-payload"),
+            title: "Project",
+            workspaceRoot: "/tmp/project-activity-payload",
+            defaultModelSelection: null,
+            scripts: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+        });
+
+        yield* appendAndProject({
+          type: "thread.created",
+          eventId: EventId.make("evt-activity-payload-thread"),
+          aggregateKind: "thread",
+          aggregateId: ThreadId.make("thread-activity-payload"),
+          occurredAt: now,
+          commandId: CommandId.make("cmd-activity-payload-thread"),
+          causationEventId: null,
+          correlationId: CorrelationId.make("cmd-activity-payload-thread"),
+          metadata: {},
+          payload: {
+            threadId: ThreadId.make("thread-activity-payload"),
+            projectId: ProjectId.make("project-activity-payload"),
+            title: "Thread",
+            modelSelection: {
+              instanceId: ProviderInstanceId.make("codex"),
+              model: "gpt-5-codex",
+            },
+            runtimeMode: "approval-required",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        });
+
+        // A file-change result is the shape that filled a gigabyte: the whole
+        // patch, which no client is ever sent.
+        const wholePatch = "@@ -1 +1 @@\n-before\n+after\n".repeat(400);
+        yield* appendAndProject({
+          type: "thread.activity-appended",
+          eventId: EventId.make("evt-activity-payload-appended"),
+          aggregateKind: "thread",
+          aggregateId: ThreadId.make("thread-activity-payload"),
+          occurredAt: now,
+          commandId: CommandId.make("cmd-activity-payload-appended"),
+          causationEventId: null,
+          correlationId: CorrelationId.make("cmd-activity-payload-appended"),
+          metadata: {},
+          payload: {
+            threadId: ThreadId.make("thread-activity-payload"),
+            activity: {
+              id: EventId.make("activity-file-change"),
+              tone: "tool",
+              kind: "tool.completed",
+              summary: "Edited a file",
+              payload: {
+                itemType: "file_change",
+                toolCallId: "call-1",
+                data: { item: { command: ["apply_patch"] }, unifiedDiff: wholePatch },
+              },
+              turnId: null,
+              createdAt: now,
+            },
+          },
+        });
+
+        const rows = yield* sql<{ readonly payload_json: string }>`
+          SELECT payload_json FROM projection_thread_activities
+          WHERE activity_id = 'activity-file-change'
+        `;
+        const stored = rows[0]!.payload_json;
+        assert.ok(!stored.includes(wholePatch), "the whole patch must not reach the read model");
+        assert.ok(stored.length < 1_000, `stored payload stayed large: ${stored.length} bytes`);
+        // The event log keeps the original, so a rebuild can still read it.
+        const events = yield* sql<{ readonly payload_json: string }>`
+          SELECT payload_json FROM orchestration_events
+          WHERE event_id = 'evt-activity-payload-appended'
+        `;
+        assert.ok(events[0]!.payload_json.includes("+after"), "the event log must keep the patch");
+      }),
+    );
+  },
+);
