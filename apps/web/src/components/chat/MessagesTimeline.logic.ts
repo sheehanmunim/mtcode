@@ -318,6 +318,15 @@ export type MessagesTimelineRow =
       displayLabel?: string;
     }
   | {
+      // A run of pictures the agent generated in one stretch reads as one set
+      // of options — side by side, the way the provider shows them — instead of
+      // four full-width rows a screen apart that cannot be compared.
+      kind: "image-batch";
+      id: string;
+      createdAt: string;
+      entries: WorkLogEntry[];
+    }
+  | {
       kind: "work-live";
       id: string;
       createdAt: string;
@@ -482,6 +491,14 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
   }
 
   return new Set(lastAssistantMessageIdByResponseKey.values());
+}
+
+/**
+ * A picture joins the strip unless its row carries something a thumbnail cannot
+ * show: a failed tool call, or a subagent CTA that owns its own row.
+ */
+function imageRowJoinsBatch(entry: WorkLogEntry): boolean {
+  return entry.tone !== "error" && entry.agentSpawn === undefined;
 }
 
 interface TurnFold {
@@ -1058,9 +1075,9 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
-      // A row showing a picture stands on its own, the way Codex shows one:
-      // summarised into "Read 4 files" the reader has to open, four generated
-      // images are four things they cannot see.
+      // A picture never gets summarised into a "Read 4 files" toggle the reader
+      // has to open: alone it takes its own row, and a run of them takes one
+      // row together.
       const inlineImagePath = workEntryShowsInlineImage(timelineEntry.entry)
         ? workEntryViewedImagePath(timelineEntry.entry)
         : null;
@@ -1070,6 +1087,47 @@ export function deriveMessagesTimelineRows(input: {
         const isRepeatOfPreviousImage = lastInlineImagePath === inlineImagePath;
         lastInlineImagePath = inlineImagePath;
         if (isRepeatOfPreviousImage) continue;
+        // An unbroken run of pictures is one set to choose from. Gather it into
+        // a single row so the reader compares them side by side instead of
+        // scrolling between four full-width images.
+        const batchEntries = imageRowJoinsBatch(timelineEntry.entry) ? [timelineEntry.entry] : [];
+        let batchCursor = index + 1;
+        let lastBatchImagePath: string = inlineImagePath;
+        while (batchEntries.length > 0 && batchCursor < input.timelineEntries.length) {
+          const nextEntry = input.timelineEntries[batchCursor];
+          if (
+            !nextEntry ||
+            nextEntry.kind !== "work" ||
+            !workEntryShowsInlineImage(nextEntry.entry) ||
+            !imageRowJoinsBatch(nextEntry.entry) ||
+            // Rows the surrounding loop owns keep their own placement: the live
+            // work anchor, an active turn's header, a fold's anchor, and rows a
+            // fold or the live group already hides.
+            nextEntry.id === activeWorkPlacementEntryId ||
+            (input.isWorking && batchCursor === activeTurnHeaderIndex) ||
+            activeWorkEntryIds.has(nextEntry.id) ||
+            collapsedEntryIds.has(nextEntry.id) ||
+            foldsByAnchorEntryId.has(nextEntry.id)
+          ) {
+            break;
+          }
+          const nextImagePath = workEntryViewedImagePath(nextEntry.entry);
+          if (nextImagePath === null) break;
+          if (nextImagePath !== lastBatchImagePath) batchEntries.push(nextEntry.entry);
+          lastBatchImagePath = nextImagePath;
+          batchCursor += 1;
+        }
+        lastInlineImagePath = lastBatchImagePath;
+        index = batchCursor - 1;
+        if (batchEntries.length > 1) {
+          nextRows.push({
+            kind: "image-batch",
+            id: timelineEntry.id,
+            createdAt: timelineEntry.createdAt,
+            entries: batchEntries,
+          });
+          continue;
+        }
       } else {
         lastInlineImagePath = null;
       }
@@ -1407,6 +1465,11 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.displayLabel === bw.displayLabel &&
         Equal.equals(a.groupedEntries, bw.groupedEntries)
       );
+    }
+
+    case "image-batch": {
+      const bi = b as typeof a;
+      return a.createdAt === bi.createdAt && Equal.equals(a.entries, bi.entries);
     }
 
     case "work-live": {

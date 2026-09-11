@@ -45,6 +45,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -1330,6 +1331,7 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
                     row.message.role === "assistant" &&
                     !row.showAssistantMeta) ||
                   row.kind === "work" ||
+                  row.kind === "image-batch" ||
                   row.kind === "work-live" ||
                   row.kind === "work-toggle" ||
                   row.kind === "thinking"
@@ -1355,6 +1357,7 @@ const TimelineRowContent = memo(function TimelineRowContent({ row }: { row: Time
           displayLabel={row.displayLabel}
         />
       ) : null}
+      {row.kind === "image-batch" ? <ImageBatchSection entries={row.entries} /> : null}
       {row.kind === "work-live" ? <LiveWorkEntryTimelineRow row={row} /> : null}
       {row.kind === "work-toggle" ? <WorkGroupToggleTimelineRow row={row} /> : null}
       {row.kind === "turn-fold" ? <TurnFoldTimelineRow row={row} /> : null}
@@ -2079,6 +2082,55 @@ const WorkGroupSection = memo(function WorkGroupSection({
           />
         ))}
       </div>
+    </section>
+  );
+});
+
+// A fixed height with a free width puts the set on one line without cropping
+// any of it: the reader is choosing between these pictures, so what differs
+// between them has to survive the thumbnail.
+const IMAGE_BATCH_THUMBNAIL_STYLE: CSSProperties = {
+  height: "9rem",
+  width: "auto",
+  maxHeight: "none",
+  maxWidth: "100%",
+};
+
+/** Pictures generated back to back, laid out as one strip to compare. */
+const ImageBatchSection = memo(function ImageBatchSection({
+  entries,
+}: {
+  entries: Extract<MessagesTimelineRow, { kind: "image-batch" }>["entries"];
+}) {
+  const { threadRef, workspaceRoot, onImageExpand } = use(TimelineRowCtx);
+  const threadId = threadRef?.threadId;
+  const images = useMemo(
+    () =>
+      threadId === undefined
+        ? []
+        : entries.flatMap((entry) => {
+            const path = workEntryViewedImagePath(entry);
+            const asset = path ? resolveViewedImageAsset(path, { threadId, workspaceRoot }) : null;
+            return asset ? [{ id: entry.id, asset }] : [];
+          }),
+    [entries, threadId, workspaceRoot],
+  );
+
+  if (!threadRef || images.length === 0) return null;
+  return (
+    <section className="flex flex-wrap items-start gap-2" aria-label="Generated images">
+      {images.map(({ id, asset }) => (
+        <ChatMarkdownAssetImage
+          key={id}
+          environmentId={threadRef.environmentId}
+          resource={asset.resource}
+          alt={asset.alt}
+          srcFragment={asset.srcFragment}
+          workspaceRoot={workspaceRoot}
+          style={IMAGE_BATCH_THUMBNAIL_STYLE}
+          onImageExpand={onImageExpand}
+        />
+      ))}
     </section>
   );
 });

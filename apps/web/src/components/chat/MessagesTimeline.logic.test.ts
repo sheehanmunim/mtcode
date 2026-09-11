@@ -1121,21 +1121,23 @@ describe("deriveMessagesTimelineRows", () => {
     ]);
   });
 
-  it("gives every picture its own row and shows a generated one only once", () => {
-    const imageEntry = (id: string, path: string, label: string) => ({
-      id: `${id}-entry`,
-      kind: "work" as const,
+  const imageEntry = (id: string, path: string, label: string, turnId?: string) => ({
+    id: `${id}-entry`,
+    kind: "work" as const,
+    createdAt: "2026-01-01T00:00:00Z",
+    entry: {
+      id,
       createdAt: "2026-01-01T00:00:00Z",
-      entry: {
-        id,
-        createdAt: "2026-01-01T00:00:00Z",
-        label,
-        tone: "tool" as const,
-        itemType: "image_view" as const,
-        toolCallId: id,
-        viewedImagePath: path,
-      },
-    });
+      label,
+      tone: "tool" as const,
+      itemType: "image_view" as const,
+      toolCallId: id,
+      viewedImagePath: path,
+      ...(turnId === undefined ? {} : { turnId: turnId as never }),
+    },
+  });
+
+  it("lays a run of pictures out as one strip and shows a generated one only once", () => {
     const generated = "/Users/dev/.codex/generated_images/thread/a.png";
 
     const rows = deriveMessagesTimelineRows({
@@ -1151,9 +1153,74 @@ describe("deriveMessagesTimelineRows", () => {
       supportsConversationRollback: false,
     });
 
-    // Not one "Read 3 files" toggle the reader has to open.
-    expect(rows.every((row) => row.kind === "work")).toBe(true);
-    expect(rows.map((row) => row.id)).toEqual(["generate-entry", "view-other-entry"]);
+    // Not one "Read 3 files" toggle the reader has to open, and not two
+    // pictures a screen apart.
+    expect(rows.map((row) => ({ kind: row.kind, id: row.id }))).toEqual([
+      { kind: "image-batch", id: "generate-entry" },
+    ]);
+    const batch = rows[0];
+    expect(batch?.kind === "image-batch" ? batch.entries.map((entry) => entry.id) : null).toEqual([
+      "generate",
+      "view-other",
+    ]);
+  });
+
+  it("keeps a lone picture on its own row", () => {
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [imageEntry("only", "/workspace/shot.png", "Image view")],
+      isWorking: false,
+      activeTurnStartedAt: null,
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    expect(rows.map((row) => ({ kind: row.kind, id: row.id }))).toEqual([
+      { kind: "work", id: "only-entry" },
+    ]);
+  });
+
+  it("shows four generated options together in front of a settled turn's fold", () => {
+    const turnId = "turn-options";
+    const message = (id: string, text: string, createdAt: string) => ({
+      id: `${id}-entry`,
+      kind: "message" as const,
+      createdAt,
+      message: {
+        id: id as never,
+        role: "assistant" as const,
+        text,
+        turnId: turnId as never,
+        createdAt,
+        updatedAt: createdAt,
+        streaming: false,
+      },
+    });
+    const option = (letter: string) =>
+      imageEntry(
+        `exec-${letter}`,
+        `/Users/dev/.codex/generated_images/thread/exec-${letter}.png`,
+        "Image view",
+        turnId,
+      );
+
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [
+        message("intro", "I'll generate four options", "2026-01-01T00:00:00Z"),
+        option("a"),
+        option("b"),
+        option("c"),
+        option("d"),
+        message("choose", "Choose A, B, C, or D above", "2026-01-01T00:02:00Z"),
+      ],
+      isWorking: false,
+      activeTurnStartedAt: null,
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    expect(rows.map((row) => row.kind)).toEqual(["turn-fold", "image-batch", "message"]);
+    const batch = rows[1];
+    expect(batch?.kind === "image-batch" ? batch.entries.length : null).toBe(4);
   });
 
   it("only enables assistant copy for the terminal assistant message in a turn", () => {
