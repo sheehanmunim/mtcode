@@ -979,6 +979,7 @@ function PullRequestCodeTab({
               reference={reference}
               verdicts={review.verdicts}
               {...(onReviewNextStep ? { onReviewNextStep } : {})}
+              requestChangesSummaryRequired={detail.provider === "forgejo"}
               onSubmitted={() => {
                 onRefresh();
                 setReviewOpen(false);

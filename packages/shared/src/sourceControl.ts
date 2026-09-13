@@ -5,7 +5,7 @@ import type {
 } from "@t3tools/contracts";
 
 export interface ChangeRequestPresentation {
-  readonly icon: "github" | "gitlab" | "azure-devops" | "bitbucket" | "forgejo" | "change-request";
+  readonly icon: "github" | "gitlab" | "forgejo" | "azure-devops" | "bitbucket" | "change-request";
   readonly providerName: string;
   readonly shortName: string;
   readonly longName: string;
@@ -59,6 +59,17 @@ const GITLAB_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
   urlExample: "https://gitlab.com/group/project/-/merge_requests/42",
 };
 
+const FORGEJO_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
+  icon: "forgejo",
+  providerName: "Forgejo",
+  shortName: "PR",
+  longName: "pull request",
+  pluralLongName: "pull requests",
+  providerLongName: "Forgejo pull request",
+  checkoutCommandExample: "tea pr checkout 123",
+  urlExample: "https://codeberg.org/owner/repo/pulls/42",
+};
+
 const AZURE_DEVOPS_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
   icon: "azure-devops",
   providerName: "Azure DevOps",
@@ -80,17 +91,6 @@ const BITBUCKET_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
   urlExample: "https://bitbucket.org/workspace/repo/pull-requests/42",
 };
 
-const FORGEJO_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
-  icon: "forgejo",
-  providerName: "Forgejo",
-  shortName: "PR",
-  longName: "pull request",
-  pluralLongName: "pull requests",
-  providerLongName: "Forgejo pull request",
-  checkoutCommandExample: "fj pr checkout 123",
-  urlExample: "https://codeberg.org/owner/repo/pulls/42",
-};
-
 const GENERIC_CHANGE_REQUEST_PRESENTATION: ChangeRequestPresentation = {
   icon: "change-request",
   providerName: "source control",
@@ -110,12 +110,12 @@ export function resolveChangeRequestPresentation(
       return GITHUB_CHANGE_REQUEST_PRESENTATION;
     case "gitlab":
       return GITLAB_CHANGE_REQUEST_PRESENTATION;
+    case "forgejo":
+      return FORGEJO_CHANGE_REQUEST_PRESENTATION;
     case "azure-devops":
       return AZURE_DEVOPS_CHANGE_REQUEST_PRESENTATION;
     case "bitbucket":
       return BITBUCKET_CHANGE_REQUEST_PRESENTATION;
-    case "forgejo":
-      return FORGEJO_CHANGE_REQUEST_PRESENTATION;
     case "unknown":
       return GENERIC_CHANGE_REQUEST_PRESENTATION;
   }
@@ -216,26 +216,6 @@ function isBitbucketHost(host: string): boolean {
   return host === "bitbucket.org" || hasDnsLabel(host, "bitbucket");
 }
 
-function isForgejoHost(host: string): boolean {
-  return (
-    host === "codeberg.org" ||
-    host === "gitea.com" ||
-    hasDnsLabel(host, "forgejo") ||
-    hasDnsLabel(host, "codeberg") ||
-    hasDnsLabel(host, "gitea")
-  );
-}
-
-function forgejoProviderName(hostname: string): string {
-  if (hostname === "codeberg.org" || hasDnsLabel(hostname, "codeberg")) {
-    return hostname === "codeberg.org" ? "Codeberg" : "Codeberg Self-Hosted";
-  }
-  if (hostname === "gitea.com" || hasDnsLabel(hostname, "gitea")) {
-    return hostname === "gitea.com" ? "Gitea" : "Gitea Self-Hosted";
-  }
-  return "Forgejo";
-}
-
 export function detectSourceControlProviderFromRemoteUrl(
   remoteUrl: string,
 ): SourceControlProviderInfo | null {
@@ -244,6 +224,20 @@ export function detectSourceControlProviderFromRemoteUrl(
     return null;
   }
   const hostname = parseHostName(host);
+
+  if (
+    hostname === "codeberg.org" ||
+    hasDnsLabel(hostname, "forgejo") ||
+    hasDnsLabel(hostname, "gitea")
+  ) {
+    return {
+      kind: "forgejo",
+      name: "Forgejo",
+      baseUrl: /^https?:/iu.test(remoteUrl.trim())
+        ? new URL(remoteUrl.trim()).origin
+        : toBaseUrl(host),
+    };
+  }
 
   if (isGitHubHost(hostname)) {
     return {
@@ -273,14 +267,6 @@ export function detectSourceControlProviderFromRemoteUrl(
     return {
       kind: "bitbucket",
       name: hostname === "bitbucket.org" ? "Bitbucket" : "Bitbucket Self-Hosted",
-      baseUrl: toBaseUrl(host),
-    };
-  }
-
-  if (isForgejoHost(hostname)) {
-    return {
-      kind: "forgejo",
-      name: forgejoProviderName(hostname),
       baseUrl: toBaseUrl(host),
     };
   }

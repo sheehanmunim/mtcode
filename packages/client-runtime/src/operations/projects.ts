@@ -25,7 +25,7 @@ import type { EnvironmentProject } from "../state/models.ts";
 
 export type AddProjectRemoteProviderKind = Extract<
   SourceControlProviderKind,
-  "github" | "gitlab" | "bitbucket" | "azure-devops" | "forgejo"
+  "github" | "gitlab" | "forgejo" | "bitbucket" | "azure-devops"
 >;
 export type AddProjectRemoteSource = AddProjectRemoteProviderKind | "url";
 
@@ -59,31 +59,31 @@ const ADD_PROJECT_REMOTE_SOURCES: ReadonlyArray<AddProjectRemoteSource> = [
   "url",
   "github",
   "gitlab",
+  "forgejo",
   "bitbucket",
   "azure-devops",
-  "forgejo",
 ];
 
 const ADD_PROJECT_REMOTE_PROVIDER_SOURCES: ReadonlyArray<AddProjectRemoteProviderKind> = [
   "github",
   "gitlab",
+  "forgejo",
   "bitbucket",
   "azure-devops",
-  "forgejo",
 ];
 
 export function addProjectRemoteSourceLabel(source: AddProjectRemoteSource): string {
   switch (source) {
     case "github":
       return "GitHub";
+    case "forgejo":
+      return "Forgejo / Gitea";
     case "gitlab":
       return "GitLab";
     case "bitbucket":
       return "Bitbucket";
     case "azure-devops":
       return "Azure DevOps";
-    case "forgejo":
-      return "Forgejo";
     case "url":
       return "Git URL";
   }
@@ -91,6 +91,7 @@ export function addProjectRemoteSourceLabel(source: AddProjectRemoteSource): str
 
 export function addProjectRemoteSourcePathHint(source: AddProjectRemoteSource): string {
   switch (source) {
+    case "forgejo":
     case "github":
       return "owner/repo";
     case "gitlab":
@@ -99,8 +100,6 @@ export function addProjectRemoteSourcePathHint(source: AddProjectRemoteSource): 
       return "workspace/repository";
     case "azure-devops":
       return "project/repository";
-    case "forgejo":
-      return "host/owner/repo";
     case "url":
       return "URL";
   }
@@ -123,11 +122,13 @@ export function normalizePastedCloneUrl(input: string): string {
   return `https://github.com/${repository}`;
 }
 
-/** GitHub defaults to HTTPS; other providers retain their existing SSH default. */
+/** GitHub and Forgejo default to HTTPS; other providers retain their existing SSH default. */
 export function getDefaultCloneUrl(
   repository: Pick<SourceControlRepositoryInfo, "provider" | "url" | "sshUrl">,
 ): string {
-  return repository.provider === "github" ? repository.url : repository.sshUrl;
+  return repository.provider === "github" || repository.provider === "forgejo"
+    ? repository.url
+    : repository.sshUrl;
 }
 
 export function sortAddProjectProviderSources(
@@ -159,9 +160,9 @@ export function buildAddProjectRemoteSourceReadiness(
     url: { ready: true, hint: null },
     github: unavailable,
     gitlab: unavailable,
+    forgejo: unavailable,
     bitbucket: unavailable,
     "azure-devops": unavailable,
-    forgejo: unavailable,
   };
 
   if (!discovery) {

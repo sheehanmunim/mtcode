@@ -16,9 +16,9 @@ import {
 import {
   AzureDevOpsIcon,
   BitbucketIcon,
-  ForgejoIcon,
   GitHubIcon,
   GitLabIcon,
+  ForgejoIcon,
 } from "./components/Icons";
 
 export interface SourceControlPresentation {
@@ -38,6 +38,12 @@ export function getSourceControlPresentation(
         terminology: getChangeRequestTerminology(provider),
         Icon: GitHubIcon,
       };
+    case "forgejo":
+      return {
+        providerName: provider?.name || presentation.providerName,
+        terminology: getChangeRequestTerminology(provider),
+        Icon: ForgejoIcon,
+      };
     case "gitlab":
       return {
         providerName: provider?.name || presentation.providerName,
@@ -55,12 +61,6 @@ export function getSourceControlPresentation(
         providerName: provider?.name || presentation.providerName,
         terminology: getChangeRequestTerminology(provider),
         Icon: BitbucketIcon,
-      };
-    case "forgejo":
-      return {
-        providerName: provider?.name || presentation.providerName,
-        terminology: getChangeRequestTerminology(provider),
-        Icon: ForgejoIcon,
       };
     case "change-request":
       return {

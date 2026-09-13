@@ -1,9 +1,9 @@
-import Svg, { Circle, Defs, LinearGradient, Path, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, G, LinearGradient, Path, Stop } from "react-native-svg";
 import { withUniwind } from "uniwind";
 
 const ThemedSvg = withUniwind(Svg);
 
-export type SourceControlIconKind = "github" | "gitlab" | "bitbucket" | "azure-devops" | "forgejo";
+export type SourceControlIconKind = "github" | "gitlab" | "forgejo" | "bitbucket" | "azure-devops";
 
 export function SourceControlIcon(props: {
   readonly kind: SourceControlIconKind;
@@ -14,6 +14,19 @@ export function SourceControlIcon(props: {
   const size = props.size ?? 18;
 
   switch (props.kind) {
+    case "forgejo":
+      // Official two-color mark from https://forgejo.org/favicon.svg.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 212 212">
+          <G transform="translate(6 6)" fill="none">
+            <Path d="M58 168 v-98 a50 50 0 0 1 50-50 h20" stroke="#ff6600" strokeWidth={25} />
+            <Path d="M58 168 v-30 a50 50 0 0 1 50-50 h20" stroke="#d40000" strokeWidth={25} />
+            <Circle cx={142} cy={20} r={18} stroke="#ff6600" strokeWidth={15} />
+            <Circle cx={142} cy={88} r={18} stroke="#d40000" strokeWidth={15} />
+            <Circle cx={58} cy={180} r={18} stroke="#d40000" strokeWidth={15} />
+          </G>
+        </Svg>
+      );
     case "github":
       return (
         <ThemedSvg
@@ -104,26 +117,6 @@ export function SourceControlIcon(props: {
             fill="url(#bitbucket-a)"
             d="M2379.27,763.06h-745.5l-125.12,730.42H992.31l-609.67,723.67c19.32,16.71,43.96,26,69.5,26.21h1618.13 c39.35,0.51,73.14-27.88,79.44-66.72L2379.27,763.06z"
           />
-        </Svg>
-      );
-    case "forgejo":
-      return (
-        <Svg width={size} height={size} viewBox="0 0 212 212" fill="none">
-          <Path
-            d="M64 174 v-98 a50 50 0 0 1 50-50 h20"
-            stroke="#ff6600"
-            strokeWidth={25}
-            fill="none"
-          />
-          <Path
-            d="M64 174 v-30 a50 50 0 0 1 50-50 h20"
-            stroke="#d40000"
-            strokeWidth={25}
-            fill="none"
-          />
-          <Circle cx={148} cy={26} r={18} stroke="#ff6600" strokeWidth={15} fill="none" />
-          <Circle cx={148} cy={94} r={18} stroke="#d40000" strokeWidth={15} fill="none" />
-          <Circle cx={64} cy={186} r={18} stroke="#d40000" strokeWidth={15} fill="none" />
         </Svg>
       );
   }

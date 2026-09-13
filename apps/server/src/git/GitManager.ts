@@ -277,7 +277,10 @@ function resolvePullRequestWorktreeLocalBranchName(
   return `t3code/pr-${pullRequest.number}/${suffix}`;
 }
 
-function parseRepositoryNameWithOwnerFromRemoteUrl(url: string | null): string | null {
+export function parseRepositoryNameWithOwnerFromRemoteUrl(
+  url: string | null,
+  providerKind?: ChangeRequest["provider"],
+): string | null {
   const trimmed = url?.trim() ?? "";
   if (trimmed.length === 0) {
     return null;
@@ -288,6 +291,12 @@ function parseRepositoryNameWithOwnerFromRemoteUrl(url: string | null): string |
       trimmed,
     );
   const repositoryNameWithOwner = match?.[1]?.trim() ?? "";
+  // Forgejo HTTP paths can include an installation mount; its API always names owner/repo.
+  if (providerKind === "forgejo" && /^https?:\/\//iu.test(trimmed)) {
+    return repositoryNameWithOwner.length > 0
+      ? repositoryNameWithOwner.split("/").slice(-2).join("/")
+      : null;
+  }
   return repositoryNameWithOwner.length > 0 ? repositoryNameWithOwner : null;
 }
 
@@ -1287,37 +1296,19 @@ export const make = Effect.gen(function* () {
       branch === null
         ? "origin"
         : ((yield* readConfigValueNullable(cwd, `branch.${branch}.remote`)) ?? "origin");
-    const preferredRemoteUrl = yield* readConfigValueNullable(
-      cwd,
-      `remote.${preferredRemoteName}.url`,
-    );
-    const remoteName = preferredRemoteUrl ? preferredRemoteName : "origin";
     const remoteUrl =
-      preferredRemoteUrl ?? (yield* readConfigValueNullable(cwd, "remote.origin.url"));
-    if (!remoteUrl) return null;
+      (yield* readConfigValueNullable(cwd, `remote.${preferredRemoteName}.url`)) ??
+      (yield* readConfigValueNullable(cwd, "remote.origin.url"));
 
-    const detected = detectSourceControlProviderFromGitRemoteUrl(remoteUrl);
-    if (detected && detected.kind !== "unknown") {
-      return detected;
-    }
-
-    // Forgejo and Gitea have no single canonical hostname, so static detection returns
-    // "unknown" for most self-hosted instances. Refine this branch's remote via `fj auth
-    // list` (not origin), and only adopt the result when it resolves to Forgejo so other
-    // providers keep their existing status behavior.
-    if (!detected) return null;
+    const provider = remoteUrl ? detectSourceControlProviderFromGitRemoteUrl(remoteUrl) : null;
+    if (!remoteUrl || provider?.kind !== "unknown") return provider;
     const handle = yield* sourceControlProviders
       .resolveHandle({
         cwd,
-        context: {
-          provider: detected,
-          remoteName,
-          remoteUrl,
-        },
+        context: { provider, remoteName: preferredRemoteName, remoteUrl },
       })
       .pipe(Effect.orElseSucceed(() => null));
-    const refined = handle?.context?.provider;
-    return refined?.kind === "forgejo" ? refined : detected;
+    return handle?.context?.provider ?? provider;
   });
 
   const resolveRemoteRepositoryContext = Effect.fn("resolveRemoteRepositoryContext")(function* (
@@ -1333,7 +1324,22 @@ export const make = Effect.gen(function* () {
     }
 
     const remoteUrl = yield* readConfigValueNullable(cwd, `remote.${remoteName}.url`);
-    const repositoryNameWithOwner = parseRepositoryNameWithOwnerFromRemoteUrl(remoteUrl);
+    let repositoryNameWithOwner = parseRepositoryNameWithOwnerFromRemoteUrl(remoteUrl);
+    if (
+      remoteUrl !== null &&
+      /^https?:\/\//iu.test(remoteUrl) &&
+      (repositoryNameWithOwner?.split("/").length ?? 0) > 2
+    ) {
+      const detected = detectSourceControlProviderFromGitRemoteUrl(remoteUrl);
+      const kind =
+        detected?.kind === "unknown"
+          ? yield* sourceControlProvider(cwd).pipe(
+              Effect.map((provider) => provider.kind),
+              Effect.orElseSucceed(() => undefined),
+            )
+          : detected?.kind;
+      repositoryNameWithOwner = parseRepositoryNameWithOwnerFromRemoteUrl(remoteUrl, kind);
+    }
     return {
       remoteUrlKey: remoteUrl ? normalizeGitRemoteUrl(remoteUrl) : null,
       repositoryNameWithOwner,
