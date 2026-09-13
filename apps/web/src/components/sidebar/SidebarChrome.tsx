@@ -131,15 +131,16 @@ function BrandWordmark() {
 }
 
 // The brand row is baseline-aligned, which rests an inline SVG's bottom edge on
-// the text baseline. The mark is 12px and the `text-sm` label's caps are about
-// 10px, so all 2px of the difference used to pile up above the label. Nudging
-// it down a pixel centres the mark on the cap block instead, which is how the
-// lockup is meant to read — keep the height, move the mark.
+// the text baseline. The mark is 12px and the `text-sm` label's caps are 10px,
+// so left alone the whole difference piles up above the label. Dropping it 2px
+// puts the top of the mark on the cap line; the mark is also top-heavy (its ink
+// centroid sits 45% down rather than 50%), so centring the box alone still
+// reads high. Keep the height, move the mark.
 function MTWordmark() {
   return (
     <svg
       aria-label="MT"
-      className="h-3 w-auto shrink-0 translate-y-px"
+      className="h-3 w-auto shrink-0 translate-y-[2px]"
       viewBox="0 0 725 657"
       xmlns="http://www.w3.org/2000/svg"
     >
