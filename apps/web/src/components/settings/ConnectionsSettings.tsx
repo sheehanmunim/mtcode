@@ -3415,7 +3415,10 @@ export function ConnectionsSettings() {
       <ConnectAccountsSection />
       {canManageLocalBackend ? (
         <>
-          <SettingsSection {...searchableSetting("connections-environment")}>
+          <SettingsSection
+            {...searchableSetting("connections-environment")}
+            title={primaryEnvironment?.label ?? "Primary environment"}
+          >
             {primaryEnvironment && primaryEnvironmentId ? (
               <SettingsRow
                 title="Environment name"

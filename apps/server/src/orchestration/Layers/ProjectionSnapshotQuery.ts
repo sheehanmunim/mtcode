@@ -2,6 +2,7 @@ import {
   AgentSessionImportSource,
   ApprovalRequestId,
   ChatAttachment,
+  OrchestrationMessageContext,
   CheckpointRef,
   IsoDateTime,
   MessageId,
@@ -114,6 +115,7 @@ const ProjectionThreadMessageDbRowSchema = Schema.Struct({
   ...ProjectionThreadMessage.fields,
   isStreaming: Schema.Number,
   attachments: Schema.NullOr(Schema.fromJsonString(Schema.Array(ChatAttachment))),
+  context: Schema.NullOr(Schema.fromJsonString(OrchestrationMessageContext)),
   deliveryState: Schema.NullOr(Schema.Literal("queued")),
 });
 const ProjectionTurnStartMessageDbRowSchema = ProjectionThreadMessageDbRowSchema.mapFields(
@@ -147,6 +149,7 @@ const ProjectionThreadActivityIdRowSchema = Schema.Struct({
 const ProjectionThreadSessionDbRowSchema = ProjectionThreadSession;
 const ProjectionThreadRuntimeContextDbRowSchema = Schema.Struct({
   id: ThreadId,
+  projectId: ProjectId,
   title: Schema.String,
   session: Schema.NullOr(ProjectionThreadSessionDbRowSchema),
 });
@@ -541,9 +544,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
   });
 
   const listProjectRows = SqlSchema.findAll({
-    Request: Schema.Void,
+    Request: Schema.UndefinedOr(
+      Schema.Struct({
+        activeOnly: Schema.Boolean,
+        projectIds: Schema.optional(Schema.Array(ProjectId)),
+      }),
+    ),
     Result: ProjectionProjectDbRowSchema,
-    execute: () =>
+    execute: (filter) =>
       sql`
         SELECT
           project_id AS "projectId",
@@ -559,6 +567,8 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           updated_at AS "updatedAt",
           deleted_at AS "deletedAt"
         FROM projection_projects
+        WHERE ${filter?.activeOnly === true ? sql`deleted_at IS NULL` : sql`1 = 1`}
+          AND ${filter?.projectIds === undefined ? sql`1 = 1` : sql.in("project_id", filter.projectIds)}
         ORDER BY created_at ASC, project_id ASC
       `,
   });
@@ -723,6 +733,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           original_text AS "originalText",
           correction_target_message_id AS "correctionTargetMessageId",
           correction_replacement_text AS "correctionReplacementText",
+          context_json AS "context",
           is_streaming AS "isStreaming",
           delivery_state AS "deliveryState",
           created_at AS "createdAt",
@@ -750,6 +761,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           original_text AS "originalText",
           correction_target_message_id AS "correctionTargetMessageId",
           correction_replacement_text AS "correctionReplacementText",
+          context_json AS "context",
           is_streaming AS "isStreaming",
           delivery_state AS "deliveryState",
           created_at AS "createdAt",
@@ -1315,6 +1327,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       sql`
         SELECT
           threads.thread_id AS id,
+          threads.project_id AS "projectId",
           threads.title,
           sessions.thread_id AS "threadId",
           sessions.status,
@@ -1335,6 +1348,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         Effect.map((rows) =>
           rows.map((row) => ({
             id: row.id,
+            projectId: row.projectId,
             title: row.title,
             session: row.threadId === null ? null : row,
           })),
@@ -1356,6 +1370,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         original_text AS "originalText",
         correction_target_message_id AS "correctionTargetMessageId",
         correction_replacement_text AS "correctionReplacementText",
+        context_json AS "context",
         is_streaming AS "isStreaming",
         delivery_state AS "deliveryState",
         created_at AS "createdAt",
@@ -1392,6 +1407,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           original_text AS "originalText",
           correction_target_message_id AS "correctionTargetMessageId",
           correction_replacement_text AS "correctionReplacementText",
+          context_json AS "context",
           is_streaming AS "isStreaming",
           delivery_state AS "deliveryState",
           created_at AS "createdAt",
@@ -1801,6 +1817,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           original_text AS "originalText",
           correction_target_message_id AS "correctionTargetMessageId",
           correction_replacement_text AS "correctionReplacementText",
+          context_json AS "context",
           is_streaming AS "isStreaming",
           delivery_state AS "deliveryState",
           created_at AS "createdAt",
@@ -2221,6 +2238,7 @@ pending_approval_requests AS (
                         },
                       }
                     : {}),
+                  ...(row.context !== null ? { context: row.context } : {}),
                   turnId: row.turnId,
                   streaming: row.isStreaming === 1,
                   createdAt: row.createdAt,
@@ -3107,6 +3125,25 @@ pending_approval_requests AS (
         ),
       );
 
+  const getProjectShells: ProjectionSnapshotQueryShape["getProjectShells"] = (projectIds) => {
+    if (projectIds?.length === 0) return Effect.succeed([]);
+    return listProjectRows({ activeOnly: true, projectIds }).pipe(
+      Effect.mapError(
+        toPersistenceSqlOrDecodeError(
+          "ProjectionSnapshotQuery.getProjectShells:query",
+          "ProjectionSnapshotQuery.getProjectShells:decodeRows",
+        ),
+      ),
+      Effect.flatMap((projects) =>
+        resolveRepositoryIdentitiesForProjects(projects).pipe(
+          Effect.map((identities) =>
+            projects.map((row) => mapProjectShellRow(row, identities.get(row.projectId) ?? null)),
+          ),
+        ),
+      ),
+    );
+  };
+
   const getProjectShellById: ProjectionSnapshotQueryShape["getProjectShellById"] = (projectId) =>
     getActiveProjectRowById({ projectId }).pipe(
       Effect.mapError(
@@ -3336,6 +3373,7 @@ pending_approval_requests AS (
       );
       return Option.map(context, (row) => ({
         id: row.id,
+        projectId: row.projectId,
         title: row.title,
         session: row.session === null ? null : mapSessionRow(row.session),
       }));
@@ -3362,6 +3400,7 @@ pending_approval_requests AS (
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         ...(row.attachments !== null ? { attachments: row.attachments } : {}),
+        ...(row.context !== null ? { context: row.context } : {}),
       },
       hasOtherUserMessages: row.hasOtherUserMessages === 1,
     }));
@@ -3632,7 +3671,10 @@ pending_approval_requests AS (
             ...(row.deliveryState !== null ? { deliveryState: row.deliveryState } : {}),
           };
           if (row.attachments !== null) {
-            return Object.assign(message, { attachments: row.attachments });
+            Object.assign(message, { attachments: row.attachments });
+          }
+          if (row.context !== null) {
+            Object.assign(message, { context: row.context });
           }
           return message;
         }),
@@ -3852,6 +3894,7 @@ pending_approval_requests AS (
     getEventReplayStats,
     getActiveProjectByWorkspaceRoot,
     getProjectShellById,
+    getProjectShells,
     getFirstActiveThreadIdByProjectId,
     getImportedAgentSessionSources,
     getThreadCheckpointContext,

@@ -45,11 +45,13 @@ import { SidebarUtilityMenu } from "../sidebar/SidebarChrome";
 import { scrollToSettingsTarget } from "./settingsLayout";
 import {
   searchSettings,
+  isSettingsOverviewVisible,
   SETTINGS_SECTION_LABELS,
   type SettingsPath,
   type SettingsSearchItem,
 } from "./settingsSearch";
 import { useAvailableSettingsSearchItems } from "./useAvailableSettingsSearchItems";
+import { validateSettingsScopeSearch } from "./settingsScope";
 
 const SnapShotIcon = createLucideIcon("snap-shot", [
   [
@@ -112,6 +114,11 @@ function SettingsSectionIcon({ to }: { to: SettingsPath }) {
 export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   const navigate = useNavigate();
   const currentHash = useLocation({ select: (location) => location.hash });
+  const currentSearch = useLocation({ select: (location) => location.search });
+  const scopeSearch = useMemo(() => validateSettingsScopeSearch(currentSearch), [currentSearch]);
+  const navItems = SETTINGS_NAV_ITEMS.filter(
+    (item) => item.to !== "/settings/projects" || isSettingsOverviewVisible(scopeSearch),
+  );
   const { isMobile, setOpenMobile, open, setOpen } = useSidebar();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -190,19 +197,13 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
         setOpenMobile(false);
       }
       const targetId = item.targetId ?? item.id;
-      if (
-        item.to !== "/settings/projects" &&
-        pathname === item.to &&
-        scrollToSettingsTarget(targetId)
-      ) {
+      if (pathname === item.to && scrollToSettingsTarget(targetId)) {
         // Target hashes are transient and cleared after navigation. Scroll directly on the current
         // page when mounted; otherwise preserve the hash so deferred targets can handle it later.
         return;
       }
       void navigate({
         to: item.to,
-        search: (previous) =>
-          item.to === "/settings/projects" ? { ...previous, project: undefined } : previous,
         hash: targetId,
         replace: true,
         hashScrollIntoView: false,
@@ -329,9 +330,12 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
             </SidebarMenu>
           ) : (
             <SidebarMenu className="ps-px">
-              {SETTINGS_NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                const isGeneralDetailPage =
+                  item.to === "/settings/general" && pathname === "/settings/open-source-licenses";
+                const isActive =
+                  isGeneralDetailPage || pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton

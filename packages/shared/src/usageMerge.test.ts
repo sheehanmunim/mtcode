@@ -10,7 +10,12 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { isCursorCoverageGap, mergeUsage, type EnvironmentUsage } from "./usageMerge.ts";
+import {
+  isCursorCoverageGap,
+  isModelCostUnknown,
+  mergeUsage,
+  type EnvironmentUsage,
+} from "./usageMerge.ts";
 
 function bucket(overrides: Partial<UsageBucket> = {}): UsageBucket {
   return {
@@ -404,6 +409,38 @@ describe("mergeUsage", () => {
     expect(merged.providers[0]?.costShare).toBeCloseTo(0.75, 5);
     expect(merged.costQuality.unpricedShare).toBeCloseTo(0.5, 5);
     expect(merged.costQuality.cacheSavingsUsd).toBe(4);
+  });
+
+  it("marks a model with no known rates as unpriced rather than free", () => {
+    const merged = mergeUsage(
+      [
+        environment(
+          "env-a",
+          summary(
+            [
+              bucket({ costUsd: 75 }),
+              bucket({
+                provider: "codex",
+                model: "unknown-model",
+                costUsd: 0,
+                costSource: "unpriced",
+                unpricedRecords: 5,
+              }),
+            ],
+            [
+              { provider: "claude", hostId: "mac", homePath: "/a/.claude" },
+              { provider: "codex", hostId: "mac", homePath: "/a/.codex" },
+            ],
+          ),
+        ),
+      ],
+      USAGE_CONTRACT_VERSION,
+    );
+
+    expect(merged.models.find((model) => model.model === "unknown-model")?.unpricedRecords).toBe(5);
+    expect(merged.models.filter(isModelCostUnknown).map((model) => model.model)).toEqual([
+      "unknown-model",
+    ]);
   });
 
   it("keeps two machines apart when hostname and home path collide", () => {

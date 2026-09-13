@@ -16,6 +16,7 @@ import {
 import {
   isCompatibleUsageContractVersion,
   isCursorCoverageGap,
+  isModelCostUnknown,
   type DailyTotals,
   type MergedUsage,
 } from "@t3tools/shared/usageMerge";
@@ -70,7 +71,9 @@ const CHART_HEIGHT = 180;
 export function UsageRouteScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<UsageTab>("usage");
+  // Limits first: remaining quota and reset time are what most people open
+  // the screen for.
+  const [tab, setTab] = useState<UsageTab>("limits");
   const [windowSelection, setWindowSelection] = useState(() => ({
     days: 30,
     window: makeWindow(30),
@@ -648,11 +651,15 @@ function ModelsSection(props: { readonly merged: MergedUsage }) {
             <Text className="text-sm text-foreground-muted">
               {merged.pricingStatus === "unavailable"
                 ? formatTokens(model.totalTokens)
-                : `${formatPercent(model.costShare)} of cost · ${formatTokens(model.totalTokens)} tokens`}
+                : isModelCostUnknown(model)
+                  ? `no known rates · ${formatTokens(model.totalTokens)} tokens`
+                  : `${formatPercent(model.costShare)} of cost · ${formatTokens(model.totalTokens)} tokens`}
             </Text>
           </View>
           <Text className="text-base tabular-nums text-foreground">
-            {formatUsageCost(merged.pricingStatus, model.costUsd)}
+            {merged.pricingStatus !== "unavailable" && isModelCostUnknown(model)
+              ? "Unpriced"
+              : formatUsageCost(merged.pricingStatus, model.costUsd)}
           </Text>
         </View>
       ))}

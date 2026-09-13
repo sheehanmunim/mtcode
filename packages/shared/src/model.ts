@@ -420,6 +420,11 @@ export function resolveReasoningTransition(input: {
   };
 }
 
+/** Compare Codex model families without changing provider-owned dispatch identifiers. */
+export function codexModelFamily(slug: string): string {
+  return slug.startsWith("openai.gpt-") ? slug.slice("openai.".length) : slug;
+}
+
 export function normalizeModelSlug(
   model: string | null | undefined,
   provider: ProviderDriverKind = DEFAULT_PROVIDER_DRIVER_KIND,

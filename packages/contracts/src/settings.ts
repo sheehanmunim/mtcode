@@ -18,7 +18,12 @@ import {
   DEFAULT_TEXT_GENERATION_REASONING_EFFORT,
   ProviderOptionSelections,
 } from "./model.ts";
-import { ModelSelection, ProjectScript } from "./orchestration.ts";
+import {
+  DEFAULT_RUNTIME_MODE,
+  ModelSelection,
+  ProjectScript,
+  RuntimeMode,
+} from "./orchestration.ts";
 import { BrowserProfile, BrowserProfileId, DEFAULT_BROWSER_PROFILE_ID } from "./browserProfile.ts";
 import {
   DEFAULT_PREVIEW_APPEARANCE,
@@ -839,7 +844,7 @@ export const AntigravitySettings = makeProviderSettingsSchema(
       Schema.annotateKey({
         title: "Sign-in method",
         description:
-          "Google account uses your Antigravity subscription. Gemini Enterprise needs a GCP project and location. API key and Agent Platform bill the credential you enter.",
+          "Google accounts use your subscription; API keys and Agent Platform bill usage.",
         providerSettingsForm: {
           control: "select",
           options: ANTIGRAVITY_AUTH_METHODS,
@@ -851,8 +856,7 @@ export const AntigravitySettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "API key",
-        description:
-          "Gemini API key, or a Vertex AI express key for Agent Platform. Stored in plain text on this environment.",
+        description: "Gemini or Vertex AI express key. Stored in plain text.",
         providerSettingsForm: {
           control: "password",
           placeholder: "Optional",
@@ -873,7 +877,7 @@ export const AntigravitySettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "GCP location",
-        description: "Region for Gemini Enterprise or Agent Platform, such as us-central1.",
+        description: "Region for Gemini Enterprise or Agent Platform.",
         providerSettingsForm: { placeholder: "us-central1", clearWhenEmpty: "omit" },
       }),
     ),
@@ -881,8 +885,7 @@ export const AntigravitySettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "Binary path",
-        description:
-          "Optional path to the official Antigravity ACP executable. Leave empty for automatic selection.",
+        description: "Custom ACP executable. Leave empty to select automatically.",
         providerSettingsForm: { placeholder: "Automatic", clearWhenEmpty: "persist" },
       }),
     ),
@@ -1080,6 +1083,57 @@ export const ComputerHistorySettings = Schema.Struct({
 }).pipe(Schema.withDecodingDefault(Effect.succeed({})));
 export type ComputerHistorySettings = typeof ComputerHistorySettings.Type;
 
+/**
+ * Server settings a project may override. Every other server setting is
+ * environment-wide: providers, keybindings, observability, device hosts,
+ * background activity, theme. UI, search and the write planner derive
+ * eligibility from this list, so adding a key here is the whole opt-in.
+ */
+export const PROJECT_SCOPED_SERVER_SETTING_KEYS = [
+  "defaultModelSelection",
+  "defaultRuntimeMode",
+  "defaultThreadEnvMode",
+  "newWorktreesStartFromOrigin",
+  "defaultAutoPull",
+  "defaultProjectScripts",
+  "enableAgentBrowserAccess",
+  "enableAgentDeviceAccess",
+  "textGenerationModelSelection",
+  "sourceControlWriterModelSelection",
+  "sourceControlWritingStyle",
+  "pullRequestMergeMethod",
+  "sidebarAutoSettleOnMerge",
+  "sidebarAutoSettleAfterDays",
+  "continueThreadsAfterServerUpdate",
+  "enableLegacyTokenStreaming",
+] as const;
+export type ProjectScopedServerSettingKey = (typeof PROJECT_SCOPED_SERVER_SETTING_KEYS)[number];
+
+/**
+ * One project's overrides. An absent key inherits the environment value;
+ * `null` is a real value where the environment type is nullable (no default
+ * model, no dedicated writer model, never auto-settle).
+ */
+export const ProjectSettingsOverrides = Schema.Struct({
+  defaultModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  defaultRuntimeMode: Schema.optionalKey(RuntimeMode),
+  defaultThreadEnvMode: Schema.optionalKey(ThreadEnvMode),
+  newWorktreesStartFromOrigin: Schema.optionalKey(Schema.Boolean),
+  defaultAutoPull: Schema.optionalKey(Schema.Boolean),
+  defaultProjectScripts: Schema.optionalKey(Schema.Array(ProjectScript)),
+  enableAgentBrowserAccess: Schema.optionalKey(Schema.Boolean),
+  enableAgentDeviceAccess: Schema.optionalKey(Schema.Boolean),
+  textGenerationModelSelection: Schema.optionalKey(ModelSelection),
+  sourceControlWriterModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  sourceControlWritingStyle: Schema.optionalKey(SourceControlWritingStyleSettings),
+  pullRequestMergeMethod: Schema.optionalKey(Schema.NullOr(PullRequestMergeMethod)),
+  sidebarAutoSettleOnMerge: Schema.optionalKey(Schema.Boolean),
+  sidebarAutoSettleAfterDays: Schema.optionalKey(Schema.NullOr(SidebarAutoSettleAfterDays)),
+  continueThreadsAfterServerUpdate: Schema.optionalKey(Schema.Boolean),
+  enableLegacyTokenStreaming: Schema.optionalKey(Schema.Boolean),
+} satisfies Record<ProjectScopedServerSettingKey, unknown>);
+export type ProjectSettingsOverrides = typeof ProjectSettingsOverrides.Type;
+
 export const ServerSettings = Schema.Struct({
   environmentLabel: TrimmedString.check(Schema.isMaxLength(40)).pipe(
     Schema.withDecodingDefault(Effect.succeed("")),
@@ -1137,6 +1191,24 @@ export const ServerSettings = Schema.Struct({
   defaultModelSelection: Schema.NullOr(ModelSelection).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
+  defaultRuntimeMode: RuntimeMode.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE)),
+  ),
+  /**
+   * Per-project overrides of the keys in `PROJECT_SCOPED_SERVER_SETTING_KEYS`.
+   * The source of truth for project settings; `projectAgentBrowserAccessOverrides`,
+   * `projectAutoPullOverrides` and `projectScriptOverrides` are derived views
+   * kept for one release so older clients keep reading them.
+   */
+  projectSettingsOverrides: Schema.Record(ProjectId, ProjectSettingsOverrides).pipe(
+    Schema.withDecodingDefault(Effect.succeed({})),
+  ),
+  /**
+   * Whether the legacy per-project fields have been folded into
+   * `projectSettingsOverrides`. The fold runs once so a later reset in the
+   * settings UI is not undone by the next server start.
+   */
+  projectSettingsFolded: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   /**
    * Whether agents may drive simulators and emulators. Gates the `device_*`
    * MCP tools and the preconfigured `agent-device` CLI the same way
@@ -1229,6 +1301,14 @@ export const ServerSettings = Schema.Struct({
    * than at whatever writes code.
    */
   pullRequestRankingModelSelection: Schema.NullOr(ModelSelection).pipe(
+    Schema.withDecodingDefault(Effect.succeed(null)),
+  ),
+  /**
+   * The merge method pull requests start with; `null` reuses the method
+   * last chosen on this device. Server-side so a project can override it
+   * like any other project setting.
+   */
+  pullRequestMergeMethod: Schema.NullOr(PullRequestMergeMethod).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
 
@@ -1325,6 +1405,7 @@ export const ServerSettingsOperation = Schema.Literals([
   "check-exists",
   "read-file",
   "read-provider-history",
+  "read-project-settings",
   "read-secret",
   "remove-secret",
   "remove-stale-secret",
@@ -1447,6 +1528,17 @@ export const ServerSettingsPatch = Schema.Struct({
     Schema.Record(ProjectId, Schema.NullOr(Schema.Boolean)),
   ),
   defaultModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  defaultRuntimeMode: Schema.optionalKey(RuntimeMode),
+  /**
+   * Per-project entry replacement: each entry replaces that project's whole
+   * override set and `null` removes it. Clearing one override means resending
+   * the entry without that key. Per-key null cannot express "clear" for the
+   * keys whose value type is itself nullable, and clients always hold the
+   * current entry from the last settings snapshot.
+   */
+  projectSettingsOverrides: Schema.optionalKey(
+    Schema.Record(ProjectId, Schema.NullOr(ProjectSettingsOverrides)),
+  ),
   enableAgentDeviceAccess: Schema.optionalKey(Schema.Boolean),
   enableDeviceSupport: Schema.optionalKey(Schema.Boolean),
   deviceOnboardingCompleted: Schema.optionalKey(Schema.Boolean),
@@ -1478,6 +1570,7 @@ export const ServerSettingsPatch = Schema.Struct({
   ),
   sourceControlWriterModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
   pullRequestRankingModelSelection: Schema.optionalKey(Schema.NullOr(ModelSelection)),
+  pullRequestMergeMethod: Schema.optionalKey(Schema.NullOr(PullRequestMergeMethod)),
   observability: Schema.optionalKey(
     Schema.Struct({
       otlpTracesUrl: Schema.optionalKey(TrimmedString),

@@ -9,6 +9,7 @@
 import {
   ChatAttachment,
   MessageId,
+  OrchestrationMessageContext,
   OrchestrationMessageRole,
   ThreadId,
   TurnId,
@@ -32,6 +33,7 @@ export const ProjectionThreadMessage = Schema.Struct({
   originalText: Schema.NullOr(Schema.String),
   correctionTargetMessageId: Schema.NullOr(MessageId),
   correctionReplacementText: Schema.NullOr(Schema.String),
+  context: Schema.optional(OrchestrationMessageContext),
   isStreaming: Schema.Boolean,
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,

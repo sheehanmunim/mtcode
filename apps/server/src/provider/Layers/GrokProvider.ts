@@ -52,6 +52,7 @@ import {
 
 const GROK_PRESENTATION = {
   displayName: "Grok",
+  supportsConversationRollback: false,
   badgeLabel: "Early Access",
   showInteractionModeToggle: false,
 } as const;

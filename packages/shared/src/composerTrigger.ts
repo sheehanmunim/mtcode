@@ -1,4 +1,10 @@
-export type ComposerTriggerKind = "path" | "slash-command" | "slash-model" | "skill" | "thread";
+export type ComposerTriggerKind =
+  | "path"
+  | "pull-request"
+  | "slash-command"
+  | "slash-model"
+  | "skill"
+  | "thread";
 export type ComposerSlashCommand =
   | "model"
   | "plan"
@@ -334,6 +340,17 @@ export function detectComposerTrigger(
       rangeEnd: cursor,
     };
   }
+  // Upstream's pull-request picker and this fork's cross-thread reference
+  // picker both hang off `#`. A purely numeric ref (`#123`) is a pull request;
+  // anything else (including a bare `#`) opens the thread picker.
+  const pullRequestMatch = /^#(\p{N}+)$/u.exec(token);
+  if (pullRequestMatch)
+    return {
+      kind: "pull-request",
+      query: pullRequestMatch[1] ?? "",
+      rangeStart: tokenStart,
+      rangeEnd: cursor,
+    };
   if (token.startsWith("#")) {
     return {
       kind: "thread",

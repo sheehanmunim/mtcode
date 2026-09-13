@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 import { ThreadId } from "@t3tools/contracts";
 import { resolveViewedImageAsset } from "./presentation.js";
 
@@ -18,7 +18,6 @@ describe("the four generated skies, with this thread's real workspace root", () 
         threadId,
         workspaceRoot: "/Users/sheehanmunim",
       });
-      console.log(file, "->", asset === null ? "NULL" : JSON.stringify(asset.resource));
       expect(asset).not.toBeNull();
     });
   }

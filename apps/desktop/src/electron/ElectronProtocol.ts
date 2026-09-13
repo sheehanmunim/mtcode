@@ -91,7 +91,11 @@ export function makeDesktopContentSecurityPolicy(input: DesktopProtocolRegistrat
     "style-src 'self' 'unsafe-inline'",
     `font-src 'self' ${input.scheme}: data:`,
     "worker-src 'self' blob:",
-    "frame-src 'self' blob: https://challenges.cloudflare.com",
+    // Document viewers use local Blob URLs and signed assets from runtime environments.
+    // HTML viewers retain their own sandbox; the renderer's script policy stays unchanged.
+    // `https:` subsumes the fork's explicit https://challenges.cloudflare.com Turnstile frame
+    // and `blob:` keeps the fork's document-preview blobs working.
+    "frame-src 'self' blob: http: https:",
     "form-action 'self'",
   ].join("; ");
 }

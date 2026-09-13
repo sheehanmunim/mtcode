@@ -31,6 +31,8 @@ dist-electron/
 .electron-runtime/
 .showcase/
 apps/mobile/.showcase/
+apps/mobile/.generated/
+/.generated/
 artifacts/app-store/screenshots/
 .github/pr-assets/
 native/**/target/
@@ -39,3 +41,6 @@ node_modules/
 *.log
 .env*
 !.env.example
+
+# pnpm content-addressable store; never belongs in the repo.
+.pnpm-store/

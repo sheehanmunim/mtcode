@@ -520,33 +520,32 @@ export function applyThreadDetailEvent(
         ...(event.payload.attachments !== undefined
           ? { attachments: event.payload.attachments }
           : {}),
+        ...(event.payload.context !== undefined ? { context: event.payload.context } : {}),
         turnId: event.payload.turnId,
         streaming: event.payload.streaming,
         createdAt: event.payload.createdAt,
         updatedAt: event.payload.updatedAt,
       };
 
-      const existingMessage = thread.messages.find((entry) => entry.id === message.id);
-      const messages = existingMessage
-        ? Arr.map(thread.messages, (entry) =>
-            entry.id !== message.id
-              ? entry
-              : {
-                  ...entry,
-                  text: message.streaming
-                    ? `${entry.text}${message.text}`
-                    : message.text.length > 0
-                      ? message.text
-                      : entry.text,
-                  streaming: message.streaming,
-                  ...(message.turnId !== undefined ? { turnId: message.turnId } : {}),
-                  ...(message.streaming ? {} : { updatedAt: message.updatedAt }),
-                  ...(message.attachments !== undefined
-                    ? { attachments: message.attachments }
-                    : {}),
-                },
-          )
-        : Arr.append(thread.messages, message);
+      let found = false;
+      const messages = thread.messages.map((entry) => {
+        if (entry.id !== message.id) return entry;
+        found = true;
+        return {
+          ...entry,
+          text: message.streaming
+            ? `${entry.text}${message.text}`
+            : message.text.length > 0
+              ? message.text
+              : entry.text,
+          streaming: message.streaming,
+          ...(message.turnId !== undefined ? { turnId: message.turnId } : {}),
+          ...(message.streaming ? {} : { updatedAt: message.updatedAt }),
+          ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
+          ...(message.context !== undefined ? { context: message.context } : {}),
+        };
+      });
+      if (!found) messages.push(message);
       // Update latestTurn for assistant messages bound to a turn. A completed
       // assistant message only settles the turn once the session is no longer
       // running it — providers may emit several assistant messages per turn
@@ -992,7 +991,8 @@ function retainMessagesAfterRevert(
 
   const firstRemovedCheckpoint = checkpoints
     .filter((checkpoint) => checkpoint.checkpointTurnCount > turnCount)
-    .toSorted((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)[0];
+    // `.sort()`, not `.toSorted()`: Hermes has no ES2023 array methods (see below).
+    .sort((left, right) => left.checkpointTurnCount - right.checkpointTurnCount)[0];
   const removedAssistant = firstRemovedCheckpoint?.assistantMessageId
     ? messages.find((message) => message.id === firstRemovedCheckpoint.assistantMessageId)
     : undefined;
@@ -1006,7 +1006,8 @@ function retainMessagesAfterRevert(
               (message.createdAt === removedAssistant.createdAt &&
                 message.id < removedAssistant.id)),
         )
-        .toSorted(
+        // `.sort()`, not `.toSorted()`: Hermes has no ES2023 array methods (see below).
+        .sort(
           (left, right) =>
             compareDateTimeStrings(left.createdAt, right.createdAt) ||
             left.id.localeCompare(right.id),
@@ -1042,7 +1043,9 @@ function retainMessagesAfterRevert(
         !retainedMessageIds.has(message.id) &&
         (message.turnId === null || retainedTurnIds.has(message.turnId)),
     )
-    .toSorted(
+    // `.sort()`, not `.toSorted()`: `.filter()` above already returned a fresh array, and
+    // this is shared with mobile, which runs on Hermes and has no ES2023 array methods.
+    .sort(
       (left, right) =>
         compareDateTimeStrings(left.createdAt, right.createdAt) || left.id.localeCompare(right.id),
     )
@@ -1064,7 +1067,9 @@ function retainMessagesAfterRevert(
         !retainedMessageIds.has(message.id) &&
         (message.turnId === null || retainedTurnIds.has(message.turnId)),
     )
-    .toSorted(
+    // `.sort()`, not `.toSorted()`: `.filter()` above already returned a fresh array, and
+    // this is shared with mobile, which runs on Hermes and has no ES2023 array methods.
+    .sort(
       (left, right) =>
         compareDateTimeStrings(left.createdAt, right.createdAt) || left.id.localeCompare(right.id),
     )

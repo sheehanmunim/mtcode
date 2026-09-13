@@ -537,6 +537,7 @@ describe("buildCursorProviderSnapshot", () => {
       status: "warning",
       message: "Cursor ACP model discovery timed out after 20000ms.",
       models: [],
+      supportsConversationRollback: false,
     });
   });
 

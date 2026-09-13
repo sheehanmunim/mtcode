@@ -71,6 +71,7 @@ export function hasCursorApiKey(environment?: NodeJS.ProcessEnv): boolean {
 
 const CURSOR_PRESENTATION = {
   displayName: "Cursor",
+  supportsConversationRollback: false,
   badgeLabel: "Early Access",
   showInteractionModeToggle: true,
 } as const;

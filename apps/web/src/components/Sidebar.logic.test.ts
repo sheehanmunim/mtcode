@@ -447,6 +447,18 @@ describe("shouldRecedeSidebarThread", () => {
     expect(shouldRecedeSidebarThread({ ...input, isActive: true })).toBe(false);
     expect(shouldRecedeSidebarThread({ ...input, isSelected: true })).toBe(false);
   });
+
+  it.each([false, true])("keeps input-required threads prominent with unread=%s", (isUnread) => {
+    expect(
+      shouldRecedeSidebarThread({
+        status: "input",
+        isUnread,
+        isWoke: false,
+        isActive: false,
+        isSelected: false,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("createThreadJumpHintVisibilityController", () => {
@@ -975,6 +987,118 @@ describe("mergeSidebarThreadSearchResults", () => {
 
   it("returns empty array for empty query", () => {
     expect(mergeSidebarThreadSearchResults(threads, "   ", [])).toEqual([]);
+  });
+});
+
+describe("filterSidebarProjectScopeItems", () => {
+  const items = [
+    { value: "all", label: "All projects" },
+    { value: "alpha", label: "Alpha workspace" },
+    { value: "beta", label: "Beta tools" },
+  ] as const;
+  const filter = (query: string) =>
+    filterSidebarProjectScopeItems({
+      items,
+      query,
+      matches: (item, candidate) =>
+        item.label.toLocaleLowerCase().includes(candidate.toLocaleLowerCase()),
+    });
+
+  it("shows the default row first while the query is empty", () => {
+    expect(filter("")).toEqual(items);
+    expect(filter("   ")).toEqual(items);
+  });
+
+  it("hides the default row while filtering", () => {
+    expect(filter("all")).toEqual([]);
+  });
+
+  it("returns matching projects in source order and supports no-match results", () => {
+    expect(filter("WORK")).toEqual([items[1]]);
+    expect(filter("missing")).toEqual([]);
+  });
+});
+
+describe("reduceSidebarProjectScopeMenuState", () => {
+  const queriedOpenState = { open: true, query: "alpha" };
+
+  it("clears the query when the combobox closes through onOpenChange", () => {
+    expect(
+      reduceSidebarProjectScopeMenuState(queriedOpenState, {
+        type: "open-changed",
+        open: false,
+      }),
+    ).toEqual({ open: false, query: "" });
+  });
+
+  it("clears the query when project settings closes the combobox", () => {
+    expect(
+      reduceSidebarProjectScopeMenuState(queriedOpenState, {
+        type: "project-settings-opened",
+      }),
+    ).toEqual({ open: false, query: "" });
+  });
+
+  it("keeps the popup open while the query changes", () => {
+    expect(
+      reduceSidebarProjectScopeMenuState(
+        { open: true, query: "" },
+        { type: "query-changed", query: "beta" },
+      ),
+    ).toEqual({ open: true, query: "beta" });
+  });
+});
+
+describe("sortThreadsForSidebar", () => {
+  const sortable = (input: { id: string; createdAt: string }) => ({
+    id: input.id,
+    createdAt: input.createdAt,
+  });
+
+  it("orders by creation time, newest first, ignoring activity", () => {
+    const sorted = sortThreadsForSidebar([
+      sortable({ id: "oldest", createdAt: "2026-03-09T08:00:00.000Z" }),
+      sortable({ id: "newest", createdAt: "2026-03-09T12:00:00.000Z" }),
+      sortable({ id: "middle", createdAt: "2026-03-09T10:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual(["newest", "middle", "oldest"]);
+  });
+
+  it("breaks creation-time ties by id so the order is stable", () => {
+    const sorted = sortThreadsForSidebar([
+      sortable({ id: "b", createdAt: "2026-03-09T10:00:00.000Z" }),
+      sortable({ id: "a", createdAt: "2026-03-09T10:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual(["a", "b"]);
+  });
+
+  it("surfaces an un-settled thread at the top via its re-entry stamp", () => {
+    const sorted = sortThreadsForSidebar([
+      {
+        id: "old-unsettled",
+        createdAt: "2026-03-09T08:00:00.000Z",
+        unsettledAt: "2026-03-09T13:00:00.000Z",
+      },
+      sortable({ id: "newest", createdAt: "2026-03-09T12:00:00.000Z" }),
+      sortable({ id: "middle", createdAt: "2026-03-09T10:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual(["old-unsettled", "newest", "middle"]);
+  });
+
+  it("ignores a re-entry stamp older than the thread's creation", () => {
+    const sorted = sortThreadsForSidebar([
+      {
+        id: "stale-stamp",
+        createdAt: "2026-03-09T10:00:00.000Z",
+        unsettledAt: "2026-03-09T09:00:00.000Z",
+      },
+      sortable({ id: "newest", createdAt: "2026-03-09T12:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual(["newest", "stale-stamp"]);
   });
 });
 
