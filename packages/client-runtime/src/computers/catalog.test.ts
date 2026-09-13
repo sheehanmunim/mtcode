@@ -68,6 +68,7 @@ describe("computerPeerFromPresentation", () => {
     const environmentId = EnvironmentId.make("env-blade");
     const peer = computerPeerFromPresentation({
       entry: {
+        enabled: true,
         target: new SshConnectionTarget({
           environmentId,
           label: "Blade",
@@ -112,6 +113,7 @@ describe("computerPeerFromPresentation", () => {
     const environmentId = EnvironmentId.make("env-mac");
     const peer = computerPeerFromPresentation({
       entry: {
+        enabled: true,
         target: new PrimaryConnectionTarget({
           environmentId,
           label: "This device",

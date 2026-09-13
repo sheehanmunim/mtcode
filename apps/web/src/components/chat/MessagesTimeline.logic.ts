@@ -676,14 +676,11 @@ function deriveTurnFolds(input: {
       if (!isCompaction && index > terminalEntryIndex && !isSingleTrailingActivity) {
         continue;
       }
-      // User input stays visible after the surrounding work settles.
-      if (entry.kind === "work" && entry.entry.questionAnswer !== undefined) {
-        continue;
-      }
-      // Agent-spawn CTA rows never fold: workflows outlive their launching
-      // turn (dynamic spawns, background execution), and folding the CTA
-      // when the turn settles makes a still-running fleet invisible.
-      if (entry.kind === "work" && entry.entry.agentSpawn !== undefined) {
+      // User input and subagent batches stay visible after their turn settles.
+      if (
+        entry.kind === "work" &&
+        (entry.entry.questionAnswer !== undefined || entry.entry.agentSpawn !== undefined)
+      ) {
         continue;
       }
       // Neither do rows showing a picture the agent looked at or generated:
@@ -888,6 +885,8 @@ export function deriveMessagesTimelineRows(input: {
   activeTurnStartedAt: string | null;
   turnDiffSummaries: ReadonlyArray<TurnDiffSummary>;
   supportsConversationRollback: boolean;
+  /** Task ids of subagents still working, used by the active tool indicator. */
+  liveAgentTaskIds?: ReadonlySet<string> | undefined;
 }): MessagesTimelineRow[] {
   const turnDiffSummaryByAssistantMessageId = new Map<MessageId, TurnDiffSummary>();
   for (const summary of input.turnDiffSummaries) {
@@ -952,7 +951,6 @@ export function deriveMessagesTimelineRows(input: {
     if (
       !entryBelongsToActiveTurn(entry, index) ||
       entry.kind !== "work" ||
-      entry.entry.agentSpawn !== undefined ||
       entry.entry.questionAnswer !== undefined ||
       entry.entry.sourceActivityKind === "context-compaction" ||
       entry.entry.tone === "error"
@@ -967,9 +965,14 @@ export function deriveMessagesTimelineRows(input: {
   );
   const activeWorkAnchor = activeToolEntries[0];
   const latestVisibleToolEntry = visibleActiveToolEntries.at(-1);
-  const latestRunningToolEntry = visibleActiveToolEntries.findLast((entry) =>
-    workEntryIsActiveTurnActivity(entry.entry),
-  );
+  const latestRunningToolEntry = visibleActiveToolEntries.findLast((entry) => {
+    const spawn = entry.entry.agentSpawn;
+    return spawn
+      ? entry === latestVisibleToolEntry &&
+          ((spawn.workflowId !== null && input.liveAgentTaskIds?.has(spawn.workflowId)) ||
+            spawn.agentTaskIds.some((taskId) => input.liveAgentTaskIds?.has(taskId)))
+      : workEntryIsActiveTurnActivity(entry.entry);
+  });
   const latestToolFailed =
     latestRunningToolEntry === undefined &&
     latestVisibleToolEntry !== undefined &&
@@ -978,7 +981,10 @@ export function deriveMessagesTimelineRows(input: {
   const latestToolKeepsActivityLive =
     latestRunningToolEntry !== undefined ||
     (latestVisibleToolEntry !== undefined &&
-      workEntryIndicatesToolSuccess(latestVisibleToolEntry.entry));
+      latestVisibleToolEntry.entry.agentSpawn === undefined &&
+      (workEntryIndicatesToolSuccess(latestVisibleToolEntry.entry) ||
+        (latestVisibleToolEntry.entry.toolLifecycleStatus === "completed" &&
+          !workEntryDisplayIndicatesToolFailure(latestVisibleToolEntry.entry))));
   const activeWorkPlacementEntryId = latestVisibleToolEntry?.id;
   const activeWorkRow =
     activeWorkAnchor && latestVisibleToolEntry && !latestToolFailed
@@ -1020,7 +1026,7 @@ export function deriveMessagesTimelineRows(input: {
     if (activeWorkRow === null) return;
     nextRows.push(activeWorkRow);
     hasActivityRow ||= activeWorkRow.active;
-    if (!activeWorkRow.expanded) return;
+    if (!activeWorkRow.expanded || activeWorkRow.entry.agentSpawn) return;
     nextRows.push(
       expandedWorkGroupRow(
         activeWorkRow.groupId,
@@ -1142,6 +1148,12 @@ export function deriveMessagesTimelineRows(input: {
         timelineEntry.entry.tone === "error" ||
         inlineImagePath !== null
       ) {
+        const spawn = timelineEntry.entry.agentSpawn;
+        if (spawn && entryBelongsToActiveTurn(timelineEntry, index)) {
+          hasActivityRow ||=
+            (spawn.workflowId !== null && input.liveAgentTaskIds?.has(spawn.workflowId)) ||
+            spawn.agentTaskIds.some((taskId) => input.liveAgentTaskIds?.has(taskId));
+        }
         nextRows.push({
           kind: "work",
           id: timelineEntry.id,

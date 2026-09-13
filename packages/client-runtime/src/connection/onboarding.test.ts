@@ -185,6 +185,7 @@ describe("connection onboarding", () => {
               wsBaseUrl: "ws://old.example.test/",
             }),
           ),
+          enabled: true,
         }),
         credential: Option.some(new BearerConnectionCredential({ token: "bearer-token" })),
       });
@@ -215,6 +216,7 @@ describe("connection onboarding", () => {
           httpBaseUrl: "http://new.example.test/path",
         },
         entry: Option.some({
+          enabled: true,
           target: new BearerConnectionTarget({
             environmentId,
             label: "Saved label",
@@ -254,6 +256,7 @@ describe("connection onboarding", () => {
           httpBaseUrl: "http://new.example.test/",
         },
         entry: Option.some({
+          enabled: true,
           target: new BearerConnectionTarget({
             environmentId,
             label: "Saved label",

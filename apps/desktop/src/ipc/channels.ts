@@ -17,6 +17,7 @@ export const CLEAR_COMPUTER_HISTORY_CHANNEL = "desktop:clear-computer-history";
 export const REVEAL_COMPUTER_HISTORY_MEMORY_CHANNEL = "desktop:reveal-computer-history-memory";
 export const DELETE_COMPUTER_HISTORY_MEMORY_CHANNEL = "desktop:delete-computer-history-memory";
 export const MENU_ACTION_CHANNEL = "desktop:menu-action";
+export const PASTE_AS_TEXT_CHANNEL = "desktop:paste-as-text";
 export const SNAP_SHOT_EVENT_CHANNEL = "desktop:snap-shot-event";
 export const QUIT_SHORTCUT_CHANNEL = "desktop:quit-shortcut";
 export const GET_WINDOW_FULLSCREEN_STATE_CHANNEL = "desktop:get-window-fullscreen-state";

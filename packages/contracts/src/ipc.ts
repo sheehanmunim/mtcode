@@ -1453,6 +1453,8 @@ export interface DesktopBridge {
   revealComputerHistoryMemory?: (path: string) => Promise<boolean>;
   /** Delete one timeline memory (and its Codex mirror copy when present). */
   deleteComputerHistoryMemory?: (path: string) => Promise<ComputerHistoryTimeline>;
+  /** Present when the desktop shell can perform an ordered plain-text paste. */
+  pasteAsText?: () => Promise<void>;
   onMenuAction: (listener: (action: string) => void) => () => void;
   onSnapShotEvent?: (listener: (event: DesktopSnapShotEvent) => void) => () => void;
   /**

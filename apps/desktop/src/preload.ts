@@ -201,6 +201,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.invoke(IpcChannels.REVEAL_COMPUTER_HISTORY_MEMORY_CHANNEL, path),
   deleteComputerHistoryMemory: (path) =>
     ipcRenderer.invoke(IpcChannels.DELETE_COMPUTER_HISTORY_MEMORY_CHANNEL, path),
+  pasteAsText: () => ipcRenderer.invoke(IpcChannels.PASTE_AS_TEXT_CHANNEL, undefined),
   onMenuAction: (listener) => {
     const wrappedListener = (_event: Electron.IpcRendererEvent, action: unknown) => {
       if (typeof action !== "string") return;

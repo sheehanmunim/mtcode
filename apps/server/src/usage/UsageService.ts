@@ -48,6 +48,7 @@ import { deriveProviderInstanceConfigMap } from "../provider/Layers/ProviderInst
 import { hasEnabledCursorInstance } from "./cursorAppData.ts";
 import { resolveClaudeHomePath } from "../provider/Drivers/ClaudeHome.ts";
 import { resolveCodexHomeLayout } from "../provider/Drivers/CodexHomeLayout.ts";
+import { mergeProviderInstanceEnvironment } from "../provider/ProviderInstanceEnvironment.ts";
 import { listProviderHomeCandidates, scanHomePath } from "./usageHomes.ts";
 import { UsageAggregator } from "./usageAggregation.ts";
 import { projectUsageSummaryForClient } from "./usageClientCompat.ts";
@@ -275,19 +276,6 @@ export const make = Effect.gen(function* () {
     Effect.withSpan("UsageService.refreshRates"),
   );
 
-  /**
-   * Claude's config dir is the home itself when overridden, but a default
-   * install nests transcripts under `~/.claude/projects`. Probe both.
-   */
-  const resolveClaudeTranscriptDir = (homePath: string) =>
-    Effect.gen(function* () {
-      const nested = path.join(homePath, ".claude", "projects");
-      const nestedExists = yield* fileSystem
-        .exists(nested)
-        .pipe(Effect.catchCause(() => Effect.succeed(false)));
-      return nestedExists ? nested : path.join(homePath, "projects");
-    });
-
   // A settings failure must not silently discard custom rates or transcript homes.
   const readSettings = settingsService.getSettings.pipe(
     Effect.catchCause(
@@ -339,20 +327,25 @@ export const make = Effect.gen(function* () {
         dirs.push({ provider, dir: canonical, kind: "jsonl" });
       });
 
-    for (const candidate of listProviderHomeCandidates(settings, "claude")) {
+    for (const candidate of listProviderHomeCandidates(settings, "claude", hostEnvironment)) {
       // A blob that fails to decode belongs to an instance the registry
       // already reports as unavailable; the scan skips it.
       const config = yield* decodeClaudeSettings(candidate.config).pipe(
         Effect.catchCause(() => Effect.succeed(null)),
       );
       if (config === null) continue;
-      const claudeHome = yield* resolveClaudeHomePath({
-        homePath: scanHomePath(config.homePath, candidate.homeEnvValue, false),
-      });
-      yield* pushJsonl("claude", yield* resolveClaudeTranscriptDir(claudeHome));
+      const configuredHome = scanHomePath(config.homePath, candidate.homeEnvValue, false);
+      // An instance that configures neither a home path nor `CLAUDE_CONFIG_DIR`
+      // runs against Claude's default config dir. Transcripts always live in
+      // `<home>/projects`.
+      const claudeHome =
+        configuredHome.trim().length > 0
+          ? yield* resolveClaudeHomePath({ homePath: configuredHome })
+          : path.join(NodeOS.homedir(), ".claude");
+      yield* pushJsonl("claude", path.join(claudeHome, "projects"));
     }
 
-    for (const candidate of listProviderHomeCandidates(settings, "codex")) {
+    for (const candidate of listProviderHomeCandidates(settings, "codex", hostEnvironment)) {
       const config = yield* decodeCodexSettings(candidate.config).pipe(
         Effect.catchCause(() => Effect.succeed(null)),
       );
@@ -368,17 +361,42 @@ export const make = Effect.gen(function* () {
       yield* pushJsonl("codex", path.join(layout.sharedHomePath, "sessions"));
     }
 
-    const grokHome = path.resolve(
-      expandHomePath(readGrokHomeOverride(hostEnvironment) ?? path.join(NodeOS.homedir(), ".grok")),
-    );
-    yield* pushJsonl("grok", path.join(grokHome, "sessions"));
+    // Grok has no home blob in its driver config, so each instance relocates
+    // its home purely through `GROK_HOME` in its own spawn environment. The
+    // legacy default slot inherits the server's environment, mirroring
+    // `listProviderHomeCandidates` for the other providers.
+    const grokEnvironments: Array<NodeJS.ProcessEnv> = [];
+    let grokDefaultSlotClaimed = false;
+    for (const [instanceId, envelope] of Object.entries(settings.providerInstances)) {
+      // Any entry occupying the default slot claims it, even one for another
+      // driver: the registry suppresses the legacy blob in that case too.
+      if (instanceId === "grok") grokDefaultSlotClaimed = true;
+      if (envelope.driver !== "grok") continue;
+      grokEnvironments.push(
+        mergeProviderInstanceEnvironment(envelope.environment, hostEnvironment),
+      );
+    }
+    if (!grokDefaultSlotClaimed) grokEnvironments.push(hostEnvironment);
+    for (const grokEnvironment of grokEnvironments) {
+      const grokHome = path.resolve(
+        expandHomePath(
+          readGrokHomeOverride(grokEnvironment) ?? path.join(NodeOS.homedir(), ".grok"),
+        ),
+      );
+      yield* pushJsonl("grok", path.join(grokHome, "sessions"));
+    }
 
+    // Read through the injected host environment, the way the claude, codex and
+    // grok scans already do. Reaching for `process.env` here meant a caller that
+    // supplied its own environment still had OpenCode scanned out of the real
+    // user's `~/.local/share`, which is also why these tests read real data.
     const openCodeDataDir = path.join(
-      process.env.XDG_DATA_HOME?.trim() || path.join(NodeOS.homedir(), ".local", "share"),
+      hostEnvironment.XDG_DATA_HOME?.trim() ||
+        path.join(hostEnvironment.HOME?.trim() || NodeOS.homedir(), ".local", "share"),
       "opencode",
     );
-    const openCodeDatabaseOverride = process.env.OPENCODE_DB?.trim() || undefined;
-    const disableOpenCodeChannelDatabase = process.env.OPENCODE_DISABLE_CHANNEL_DB?.trim();
+    const openCodeDatabaseOverride = hostEnvironment.OPENCODE_DB?.trim() || undefined;
+    const disableOpenCodeChannelDatabase = hostEnvironment.OPENCODE_DISABLE_CHANNEL_DB?.trim();
     const shouldDiscoverOpenCodeDatabases =
       !openCodeDatabaseOverride &&
       !["1", "true"].includes(disableOpenCodeChannelDatabase?.toLowerCase() ?? "");
