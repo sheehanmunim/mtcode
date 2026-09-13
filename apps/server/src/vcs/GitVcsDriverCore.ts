@@ -71,7 +71,7 @@ export const PATCH_RENDER_PREFIX_ARGS = ["--src-prefix=a/", "--dst-prefix=b/"] a
 // .git/sharedindex.* next to the real index and, under splitIndex.sharedIndexExpire,
 // delete the shared index the real .git/index still points at. Writing scratch
 // indexes unsplit keeps the repository's own index readable.
-const TEMP_INDEX_CONFIG_ARGS = [
+export const TEMP_INDEX_CONFIG_ARGS = [
   "-c",
   "core.splitIndex=false",
   "-c",

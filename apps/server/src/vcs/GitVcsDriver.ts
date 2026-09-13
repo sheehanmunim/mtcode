@@ -34,6 +34,7 @@ import {
   makeGitVcsDriverCore,
   PATCH_RENDER_PREFIX_ARGS,
   splitNullSeparatedGitStdoutPaths,
+  TEMP_INDEX_CONFIG_ARGS,
 } from "./GitVcsDriverCore.ts";
 import * as VcsDriver from "./VcsDriver.ts";
 import * as VcsProcess from "./VcsProcess.ts";
@@ -726,6 +727,13 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
     captureCheckpoint: Effect.fn("GitVcsDriver.checkpoints.captureCheckpoint")(function* (input) {
       const operation = "GitVcsDriver.checkpoints.captureCheckpoint";
       const gitCommonDir = yield* resolveGitCommonDir(input.cwd);
+      // Built fresh by `read-tree` below rather than copied from the real
+      // index, so it starts without the split-index link extension. That is not
+      // enough on its own: `add -A` rewrites this index, and `core.splitIndex`
+      // governs every index git writes, so the write still mints a new
+      // `sharedindex.*` and — under `splitIndex.sharedIndexExpire` — deletes the
+      // one `.git/index` still points at. Hence TEMP_INDEX_CONFIG_ARGS on the
+      // commands below; the regression test covers it.
       const tempIndexPath = path.join(
         gitCommonDir,
         `t3-checkpoint-index-${NodeCrypto.randomUUID()}`,
@@ -749,7 +757,7 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           yield* execute({
             operation,
             cwd: input.cwd,
-            args: ["read-tree", "HEAD"],
+            args: [...TEMP_INDEX_CONFIG_ARGS, "read-tree", "HEAD"],
             env: commitEnv,
           });
         }
@@ -757,14 +765,14 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         yield* execute({
           operation,
           cwd: input.cwd,
-          args: ["add", "-A", "--", "."],
+          args: [...TEMP_INDEX_CONFIG_ARGS, "add", "-A", "--", "."],
           env: commitEnv,
         });
 
         const writeTreeResult = yield* execute({
           operation,
           cwd: input.cwd,
-          args: ["write-tree"],
+          args: [...TEMP_INDEX_CONFIG_ARGS, "write-tree"],
           env: commitEnv,
         });
         const treeOid = writeTreeResult.stdout.trim();

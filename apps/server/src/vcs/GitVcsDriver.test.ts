@@ -65,6 +65,43 @@ runVcsDriverContractSuite<GitVcsDriver.GitVcsDriver, GitContractError>({
   },
 });
 
+it.effect("captures a checkpoint without expiring a split index the repository still uses", () =>
+  Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const driver = yield* GitVcsDriver.makeVcsDriverShape();
+    const cwd = yield* fileSystem.makeTempDirectoryScoped({ prefix: "t3-split-index-checkpoint-" });
+    yield* runGit(cwd, ["init"]);
+    yield* runGit(cwd, ["config", "user.email", "test@test.com"]);
+    yield* runGit(cwd, ["config", "user.name", "Test"]);
+    yield* fileSystem.writeFileString(path.join(cwd, "tracked.txt"), "one\n");
+    yield* runGit(cwd, ["add", "tracked.txt"]);
+    yield* runGit(cwd, ["commit", "-m", "initial"]);
+
+    // A repository that splits its index keeps the bulk of it in a separate
+    // `sharedindex.*` blob that `.git/index` points at. Capturing a checkpoint
+    // writes a scratch index, and git honours this setting for whatever index
+    // it writes — so an unguarded capture drops a second shared index and, with
+    // `sharedIndexExpire`, deletes the one the real index still references.
+    yield* runGit(cwd, ["config", "core.splitIndex", "true"]);
+    yield* runGit(cwd, ["config", "splitIndex.sharedIndexExpire", "now"]);
+    yield* runGit(cwd, ["update-index", "--split-index"]);
+
+    yield* fileSystem.writeFileString(path.join(cwd, "untracked.txt"), "two\n");
+    yield* driver.checkpoints.captureCheckpoint({
+      cwd,
+      checkpointRef: CheckpointRef.make("refs/t3/checkpoints/split-index"),
+    });
+
+    // The real index must still be readable. Before the scratch index was
+    // written unsplit, this failed with "index file open failed" because the
+    // shared index `.git/index` points at had been expired out from under it.
+    yield* runGit(cwd, ["ls-files", "--cached"]);
+    yield* runGit(cwd, ["status", "--porcelain"]);
+    assert.isTrue(yield* fileSystem.exists(path.join(cwd, ".git", "index")));
+  }).pipe(Effect.scoped, Effect.provide(GitContractLayer)),
+);
+
 it.effect("restores empty checkpoints without changing paths outside the workspace", () =>
   Effect.gen(function* () {
     const fileSystem = yield* FileSystem.FileSystem;
