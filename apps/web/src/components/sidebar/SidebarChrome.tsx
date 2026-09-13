@@ -130,11 +130,16 @@ function BrandWordmark() {
   return <T3Wordmark aria-label="T3" className="h-2.5 w-auto shrink-0" />;
 }
 
+// The brand row is baseline-aligned, so an inline SVG rests its bottom edge on
+// the text baseline and any extra height overshoots the caps of the label next
+// to it. This viewBox is tight to the ink, which makes the height class the
+// drawn height: `h-2.5` matches the cap height of the `text-sm` label, sized
+// the same way as the T3 mark above.
 function MTWordmark() {
   return (
     <svg
       aria-label="MT"
-      className="h-3 w-auto shrink-0"
+      className="h-2.5 w-auto shrink-0"
       viewBox="0 0 725 657"
       xmlns="http://www.w3.org/2000/svg"
     >
